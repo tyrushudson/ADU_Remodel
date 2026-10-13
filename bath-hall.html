@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body style="margin:0">
+<nav style="max-width:1180px;margin:0 auto;padding:16px 20px 0;font:14px system-ui,sans-serif"><a href="index.html" style="color:inherit">&larr; All pages</a></nav>
+<title>Hudson ADU Bath and Hall</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a drafting sheet. The plan is the page; a schedule column sits beside it, review notes run below. */
+:root {
+  --paper: #e9edf1;
+  --sheet: #fbfcfd;
+  --ink: #1d2a38;
+  --ink-soft: #566575;
+  --rule: #c7d0d9;
+  --wall-new: #1d2a38;
+  --wall-ex: #9aa7b4;
+  --counter: #e1e7ed;
+  --appliance: #f5f7f9;
+  --deck: #dde4ea;
+  --lamp: #a86200;
+  --redline: #c22f3d;
+  --redline-wash: rgba(194, 47, 61, 0.07);
+  --hand: "Architects Daughter", "Segoe Print", "Comic Sans MS", cursive;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1821; --sheet: #16212c; --ink: #e3eaf1; --ink-soft: #9fb0c0; --rule: #2f3e4e;
+    --wall-new: #e3eaf1; --wall-ex: #5f7186; --counter: #223140; --appliance: #1a2734; --deck: #1c2936;
+    --lamp: #f0b24a; --redline: #ff7a85; --redline-wash: rgba(255, 122, 133, 0.09);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1821; --sheet: #16212c; --ink: #e3eaf1; --ink-soft: #9fb0c0; --rule: #2f3e4e;
+  --wall-new: #e3eaf1; --wall-ex: #5f7186; --counter: #223140; --appliance: #1a2734; --deck: #1c2936;
+  --lamp: #f0b24a; --redline: #ff7a85; --redline-wash: rgba(255, 122, 133, 0.09);
+  color-scheme: dark;
+}
+
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 24px; }
+
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+h1 { font-family: var(--hand); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.lede { max-width: 65ch; color: var(--ink-soft); margin: 0; }
+a { color: var(--ink); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--redline); outline-offset: 2px; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-block: 1px solid var(--rule); }
+.facts div { padding: 12px 16px 12px 0; display: flex; flex-direction: column; gap: 2px; }
+.facts dt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.facts dd { margin: 0; font-family: var(--mono); font-size: 19px; font-weight: 500; font-variant-numeric: tabular-nums; }
+dl { margin: 0; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+@media (max-width: 940px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.sheet { background: var(--sheet); border: 1px solid var(--rule); min-width: 0; }
+.sheet-bar { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+.sheet-bar strong { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.toggles label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.toggles input { accent-color: var(--ink); width: 15px; height: 15px; margin: 0; }
+.toggles input:focus-visible { outline: 2px solid var(--redline); outline-offset: 2px; }
+.plan-scroll { overflow-x: auto; }
+#plan { display: block; width: 100%; min-width: 600px; max-width: 780px; height: auto; margin: 0 auto; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 10px 14px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 22px; height: 9px; display: inline-block; }
+.sw.new { background: var(--wall-new); }
+.sw.ex { background: var(--wall-ex); }
+.sw.gone { height: 0; border-top: 1.5px dashed var(--ink-soft); }
+.sw.lamp { width: 11px; height: 11px; border: 1.5px solid var(--lamp); border-radius: 50%; }
+.sw.red { height: 0; border-top: 2px solid var(--redline); }
+
+aside { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+h2 { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--ink); }
+.schedule { display: flex; flex-direction: column; }
+.schedule div { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.schedule dt { font-weight: 600; }
+.schedule dd { margin: 0; }
+.schedule .size { font-family: var(--mono); font-size: 13px; text-align: right; white-space: nowrap; }
+.schedule .where { grid-column: 1 / -1; color: var(--ink-soft); font-size: 13.5px; }
+ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+
+.review { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px 32px; }
+.review section { min-width: 0; }
+.review ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.review li { padding: 10px 0; border-bottom: 1px solid var(--rule); max-width: 62ch; }
+.review li b { font-weight: 600; }
+.review .ask h2 { border-color: var(--redline); color: var(--redline); }
+.source { font-size: 13px; color: var(--ink-soft); max-width: 75ch; margin: 0; }
+
+/* drawing */
+#plan text { font-family: var(--hand); fill: var(--ink); }
+#plan .t-room { font-size: 16px; letter-spacing: 0.06em; }
+#plan .t-fix { font-size: 12.5px; }
+#plan .t-sm { font-size: 11.5px; fill: var(--ink-soft); }
+#plan .t-dim { font-size: 12.5px; }
+#plan .wall-new { fill: var(--wall-new); }
+#plan .wall-ex { fill: var(--wall-ex); }
+#plan .counter { fill: var(--counter); stroke: var(--ink); stroke-width: 1.2; }
+#plan .appl { fill: var(--appliance); stroke: var(--ink); stroke-width: 1.2; }
+#plan .thin { fill: none; stroke: var(--ink); stroke-width: 1; }
+#plan .faint { fill: none; stroke: var(--ink-soft); stroke-width: 0.8; }
+#plan .ghost { fill: none; stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 7 5; }
+#plan .deck { fill: var(--deck); stroke: var(--ink-soft); stroke-width: 0.8; }
+#plan .board { stroke: var(--rule); stroke-width: 0.8; }
+#plan .glass { fill: var(--sheet); stroke: var(--ink); stroke-width: 1; }
+#plan .dim { stroke: var(--ink); stroke-width: 0.9; fill: none; }
+#plan .lamp { fill: none; stroke: var(--lamp); stroke-width: 1.4; }
+#plan .t-lamp { font-size: 11.5px; fill: var(--lamp); }
+#plan .red { fill: none; stroke: var(--redline); stroke-width: 1.5; }
+#plan .red-fill { fill: var(--redline-wash); stroke: var(--redline); stroke-width: 1.5; stroke-dasharray: 8 5; }
+#plan .t-red { font-size: 12.5px; fill: var(--redline); }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Proposed floor plan &middot; sheet 5 &middot; bath, hall and nook detail</span>
+    <h1>Hudson ADU Bath and Hall</h1>
+    <p class="lede">The single bathroom, the hallway that serves both bedrooms, and the route through the nook into the kitchen, redrawn from the architect's proposed floor plan. Dimensions are scaled from a scan of the sheet, so treat them as approximate. The kitchen has <a href="kitchen.html">its own plan</a>.</p>
+  </header>
+
+  <dl class="facts">
+    <div><dt>Bathroom</dt><dd>&asymp; 11'-10" &times; 5'-4"</dd></div>
+    <div><dt>Shower</dt><dd>&asymp; 3'-0" &times; 5'-4"</dd></div>
+    <div><dt>Hall width</dt><dd>&asymp; 3'-0"</dd></div>
+    <div><dt>Bath and bedroom doors</dt><dd>2'-8"</dd></div>
+    <div><dt>Opening to nook</dt><dd>3'-2"</dd></div>
+  </dl>
+
+  <div class="main">
+    <div class="sheet">
+      <div class="sheet-bar">
+        <strong>Bath, hall and nook plan</strong>
+        <div class="toggles">
+          <label for="layer-light"><input type="checkbox" id="layer-light" checked> Lighting, fan and alarms</label>
+          <label for="layer-clear"><input type="checkbox" id="layer-clear" checked> Wheelchair clearances</label>
+        </div>
+      </div>
+      <div class="plan-scroll">
+        <svg id="plan" role="img" aria-label="Plan of the bathroom at the rear of the house with shower, toilet, vanity and linen cabinet; a three-foot hallway below it with a bedroom door at each end; a row of laundry, broom and water heater closets; and an opening through to the nook and the top of the kitchen."></svg>
+      </div>
+      <div class="legend">
+        <span><i class="sw new"></i>New wall</span>
+        <span><i class="sw ex"></i>Existing wall</span>
+        <span><i class="sw gone"></i>Attic access, cut line</span>
+        <span><i class="sw lamp"></i>Light, fan or alarm</span>
+        <span><i class="sw red"></i>Clearance check</span>
+      </div>
+    </div>
+
+    <aside>
+      <section>
+        <h2>Bathroom as drawn</h2>
+        <dl class="schedule">
+          <div><dt>Shower</dt><dd class="size">&asymp; 3'-0" &times; 5'-4"</dd><dd class="where">Left end. Tiled, on a hot-mop pan, with glass doors or a curtain</dd></div>
+          <div><dt>Toilet</dt><dd class="size">&asymp; 33" space</dd><dd class="where">Rear wall, between the shower and the vanity, under a new 2'-0" &times; 4'-0" tempered window</dd></div>
+          <div><dt>Vanity and sink</dt><dd class="size">&asymp; 4'-0" &times; 22"</dd><dd class="where">Rear wall, one oval sink</dd></div>
+          <div><dt>Linen cabinet</dt><dd class="size">&asymp; 2'-0"</dd><dd class="where">Right end of the vanity wall</dd></div>
+          <div><dt>Bath door</dt><dd class="size">2'-8"</dd><dd class="where">New, from the hall, swinging into the bathroom</dd></div>
+        </dl>
+      </section>
+      <section>
+        <h2>Hall and nook as drawn</h2>
+        <dl class="schedule">
+          <div><dt>Hallway</dt><dd class="size">&asymp; 3'-0" &times; 12'</dd><dd class="where">A bedroom door at each end, both existing 2'-8" doors</dd></div>
+          <div><dt>Laundry closet</dt><dd class="size">3'-0" bi-fold</dd><dd class="where">Stacked washer and dryer, opening onto the hall</dd></div>
+          <div><dt>Broom closet</dt><dd class="size">&asymp; 2'-0"</dd><dd class="where">Beside the opening to the nook</dd></div>
+          <div><dt>Water heater closet</dt><dd class="size">door marked 2/8</dd><dd class="where">New heat pump water heater, door swings into the hall</dd></div>
+          <div><dt>Attic access</dt><dd class="size">22" &times; 30"</dd><dd class="where">Hall ceiling, for the heat pump unit above</dd></div>
+          <div><dt>Opening to nook</dt><dd class="size">3'-2"</dd><dd class="where">Cased opening, no door, about 3'-5" long between closets</dd></div>
+          <div><dt>Nook</dt><dd class="size">&asymp; 11'-10" &times; 8'</dd><dd class="where">Open to the living room and the kitchen, door and window to the deck</dd></div>
+        </dl>
+      </section>
+      <section>
+        <h2>Bath notes on the sheet</h2>
+        <ul class="notes">
+          <li>Shower valve is pressure-balancing or thermostatic.</li>
+          <li>Shower tile runs 72" up over backer board.</li>
+          <li>Shower door at least 22" wide, and the floor must fit a 30" circle.</li>
+          <li>Blocking in the walls for towel bars and the medicine cabinet.</li>
+          <li>Fan is 80 CFM on a humidistat and doubles as the whole-house ventilation fan, so it runs continuously.</li>
+          <li>Lights on a vacancy sensor.</li>
+          <li>One GFI outlet on its own 20-amp circuit.</li>
+          <li>Vanity, cabinets and flooring are left to the owner.</li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+
+  <div class="review">
+    <section>
+      <h2>Works well for aging parents</h2>
+      <ul>
+        <li><b>Short trips at night.</b> Both bedroom doors open onto the hall, and the bathroom door is no more than about 10 feet from either.</li>
+        <li><b>The shower footprint is big enough.</b> At about 3 by 5 feet it is the size of a roll-in shower. What matters is how it is built, covered in the next column.</li>
+        <li><b>Room for a grab bar at the toilet.</b> The toilet sits about 18" off the shower wall, the spacing a side grab bar needs.</li>
+        <li><b>The kitchen route has no doors.</b> From the hall it is one cased opening, then an open nook where a 5-foot turning circle fits easily.</li>
+        <li><b>Laundry is steps from both bedrooms.</b> No carrying baskets through the house.</li>
+      </ul>
+    </section>
+    <section class="ask">
+      <h2>Raise with the architect</h2>
+      <ul>
+        <li><b>Hall is 3 feet wide with 2'-8" doors.</b> A wheelchair turning from a 36" hall needs a wider door than the 30" clear these give. Widen the hall to 42" or more, or make the bath and bedroom doors 3'-0".</li>
+        <li><b>Bath door swings in.</b> If someone falls against it, help cannot get in. A 3'-0" pocket or sliding door fixes that and frees floor space.</li>
+        <li><b>No turning space inside the bathroom.</b> About 3'-6" is clear between the vanity and the hall wall, so a 5-foot circle does not fit. A wall-hung vanity with open knee space, or a shallower one, helps most.</li>
+        <li><b>Build the shower curbless.</b> A hot-mop pan normally means a curb. Ask for a flush entry along the long side, a curtain or wide opening instead of a 22" door, a fold-down seat and a hand shower.</li>
+        <li><b>Blocking for grab bars.</b> The sheet only calls for towel-bar blocking. Add plywood backing around the toilet and all three shower walls now, while the studs are open.</li>
+        <li><b>Toilet to vanity.</b> The gap scales close to the 15" code minimum from the toilet centerline. Confirm it on the full-size sheet.</li>
+        <li><b>Stacked washer and dryer.</b> The dryer controls and door end up high. Side-by-side front loaders need about 5 feet of width, which this closet does not have.</li>
+      </ul>
+    </section>
+  </div>
+
+  <p class="source">Source: sheet 5, Proposed Floor Plan, of the architect's permit set, drawn at 1/4" = 1'-0". This page is a redraw for discussion and is not a construction document. The items under "Raise with the architect" are suggestions and do not appear on the sheet.</p>
+</div>
+
+<script>
+(function () {
+  // Feet, origin at the inside rear-left corner of the bathroom. Rear of house is up, kitchen is down.
+  var S = 36, W = 11.83, T = 0.42, P = 0.38;
+  var CUT = 22.3;
+  var minX = -3.6, minY = -1.3, maxX = W + T + 3.6, maxY = CUT + 1.6;
+  var n = function (v) { return +(v * S).toFixed(1); };
+  var R = function (x, y, w, h, c, rx) { return '<rect x="' + n(x) + '" y="' + n(y) + '" width="' + n(w) + '" height="' + n(h) + '" class="' + c + '"' + (rx ? ' rx="' + rx + '"' : '') + '/>'; };
+  var L = function (x1, y1, x2, y2, c) { return '<line x1="' + n(x1) + '" y1="' + n(y1) + '" x2="' + n(x2) + '" y2="' + n(y2) + '" class="' + c + '"/>'; };
+  var C = function (x, y, r, c) { return '<circle cx="' + n(x) + '" cy="' + n(y) + '" r="' + n(r) + '" class="' + c + '"/>'; };
+  var E = function (x, y, rx, ry, c) { return '<ellipse cx="' + n(x) + '" cy="' + n(y) + '" rx="' + n(rx) + '" ry="' + n(ry) + '" class="' + c + '"/>'; };
+  var X = function (x, y, s, c, a, rot) { return '<text x="' + n(x) + '" y="' + n(y) + '" class="' + c + '" text-anchor="' + (a || 'middle') + '"' + (rot ? ' transform="rotate(-90 ' + n(x) + ' ' + n(y) + ')"' : '') + '>' + s + '</text>'; };
+  var arc = function (x1, y1, x2, y2, r, sweep) { return '<path class="faint" d="M' + n(x1) + ' ' + n(y1) + ' A' + n(r) + ' ' + n(r) + ' 0 0 ' + sweep + ' ' + n(x2) + ' ' + n(y2) + '"/>'; };
+  var poly = function (pts, c) { return '<polyline class="' + c + '" points="' + pts.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' ') + '"/>'; };
+  var tick = function (x, y, c) { return L(x - 0.14, y + 0.14, x + 0.14, y - 0.14, c); };
+  var dimH = function (x1, x2, y, s, c, tc) { return L(x1, y, x2, y, c) + tick(x1, y, c) + tick(x2, y, c) + X((x1 + x2) / 2, y - 0.15, s, tc); };
+  var dimV = function (x, y1, y2, s, c, tc) { return L(x, y1, x, y2, c) + tick(x, y1, c) + tick(x, y2, c) + X(x + 0.45, (y1 + y2) / 2, s, tc, 'middle', true); };
+
+  var o = '';
+
+  // deck beside the nook
+  o += R(W + T, 12.6, maxX - W - T, CUT - 12.6, 'deck');
+  for (var b = 13.1; b < CUT; b += 0.5) o += L(W + T, b, maxX, b, 'board');
+  o += X(W + T + 1.75, 16.6, '(N) DECK', 't-room');
+
+  // existing walls
+  o += R(minX, -T, 3.29 - minX, T, 'wall-ex') + R(5.42, -T, maxX - 5.42, T, 'wall-ex');
+  o += R(3.29, -T, 2.13, T, 'glass') + L(3.29, -T / 2, 5.42, -T / 2, 'thin');
+  o += X(4.35, -0.72, '(N) 2040 SH, TEMPERED', 't-sm');
+  o += X(10.4, -0.72, 'REAR OF HOUSE (SOUTHWEST)', 't-sm');
+  o += R(-P, 0, P, 6.1, 'wall-ex') + R(-P, 8.77, P, 3.83, 'wall-ex');
+  o += R(W, 0, P, 6.0, 'wall-ex') + R(W, 8.66, P, 3.94, 'wall-ex');
+  o += R(0, 5.37, 8.33, P, 'wall-ex') + R(11.08, 5.37, W - 11.08, P, 'wall-ex');
+  o += R(W, 12.6, T, 2.06, 'wall-ex') + R(W, 17.4, T, 0.16, 'wall-ex') + R(W, 20.26, T, CUT - 20.26, 'wall-ex');
+  o += R(W, 14.66, T, 2.74, 'glass') + L(W + T / 2, 14.66, W + T / 2, 17.4, 'thin');
+  o += R(W + P, 12.2, maxX - W - P, 0.4, 'wall-ex');
+  o += R(-T, 20.26, T, CUT - 20.26, 'wall-ex');
+
+  // new walls: closet row, bedroom closets, coat closet, kitchen stub
+  o += R(3.0, 8.8, 0.39, 3.8, 'wall-new') + R(-P, 12.2, 3.39 + P, 0.4, 'wall-new');
+  o += R(6.73, 8.8, 2.85, 0.38, 'wall-new') + R(11.6, 8.8, W - 11.6, 0.38, 'wall-new');
+  o += R(9.05, 9.18, 0.34, 3.02, 'wall-new') + R(6.73, 12.2, W + P - 6.73, 0.4, 'wall-new');
+  o += R(6.73, 9.18, 0.39, 3.02, 'thin');
+  o += R(-3.0, 5.4, 3.0 - P, 0.35, 'wall-new') + R(W + P, 5.4, 2.8, 0.35, 'wall-new');
+  o += R(minX, 9.7, -P - minX, 0.3, 'wall-new') + R(-3.3, 10.0, 0.4, 2.6, 'wall-new');
+  o += L(-2.9, 12.6, -0.9, 12.6, 'thin');
+  o += R(0, 20.26, 2.27, 0.3, 'wall-new');
+
+  // bedroom closets and labels
+  o += L(-3.0, 0.3, -3.0, 5.2, 'ghost') + X(-1.65, 2.8, 'CLOSET', 't-sm');
+  o += L(W + P + 2.6, 0.3, W + P + 2.6, 5.2, 'ghost') + X(W + P + 1.3, 2.8, 'CLOSET', 't-sm');
+  o += X(-1.95, 9.42, 'BEDROOM 1', 't-fix') + X(W + T + 1.75, 10.6, 'BEDROOM 2', 't-fix');
+  o += X(-1.65, 11.4, 'COAT', 't-sm');
+  o += X(-1.9, 16.2, 'LIVING', 't-room') + X(-1.9, 16.75, 'ROOM', 't-room') + X(-1.9, 17.3, 'open to nook', 't-sm');
+
+  // bathroom fixtures
+  o += R(0, 0, 3.0, 5.37, 'appl') + C(1.5, 3.4, 0.12, 'thin');
+  o += L(3.0, 0, 3.0, 5.37, 'thin') + L(3.08, 0, 3.08, 5.37, 'thin');
+  o += X(1.5, 2.2, 'SHOWER', 't-fix') + X(1.5, 2.65, '3\'-0" x 5\'-4"', 't-sm');
+  o += R(3.73, 0.15, 1.64, 0.75, 'appl', 4) + E(4.55, 1.62, 0.46, 0.7, 'appl');
+  o += R(5.76, 0, 4.07, 1.89, 'counter') + E(7.79, 0.95, 0.9, 0.66, 'appl');
+  o += R(9.83, 0, 2.0, 1.85, 'appl') + X(10.83, 1.05, 'LINEN', 't-fix');
+  o += X(5.6, 4.05, '(R) BATH', 't-room');
+
+  // doors
+  o += L(11.08, 5.37, 9.29, 3.49, 'thin') + arc(8.41, 5.37, 9.29, 3.49, 2.67, 1);
+  o += X(9.75, 6.28, '(N) 2/8 DOOR', 't-sm');
+  o += L(-P, 6.1, -P - 2.31, 7.43, 'thin') + arc(-P, 8.77, -P - 2.31, 7.43, 2.67, 1);
+  o += L(W + P, 8.66, W + P + 2.0, 6.78, 'thin') + arc(W + P, 6.0, W + P + 2.0, 6.78, 2.67, 1);
+  o += X(-1.9, 6.0, '(E) 2/8', 't-sm') + X(W + P + 1.45, 8.55, '(E) 2/8', 't-sm');
+  o += L(11.6, 8.8, 10.2, 7.4, 'thin') + arc(9.6, 8.8, 10.2, 7.4, 2.0, 1);
+  o += L(W, 20.26, W - 1.91, 18.35, 'thin') + arc(W, 17.56, W - 1.91, 18.35, 2.7, 0);
+  o += X(W - 0.25, 19.3, '2/8', 't-sm', 'end');
+
+  // hall
+  o += X(1.9, 7.45, 'HALL', 't-room');
+  o += R(4.07, 6.15, 1.83, 2.42, 'ghost') + X(4.98, 7.3, '22 x 30', 't-sm') + X(4.98, 7.7, 'attic', 't-sm');
+
+  // closet row
+  o += poly([[0.1, 8.98], [0.82, 8.5], [1.55, 8.98], [2.28, 8.5], [3.0, 8.98]], 'thin');
+  o += R(0.35, 9.45, 2.35, 2.5, 'appl') + X(1.52, 10.6, 'STACK', 't-fix') + X(1.52, 11.05, 'W/D', 't-fix');
+  o += X(8.1, 10.85, 'BROOM', 't-sm');
+  o += C(10.6, 10.75, 0.85, 'appl') + X(10.6, 10.88, 'WH', 't-fix');
+
+  // nook and kitchen top
+  o += X(5.9, 15.3, 'NOOK', 't-room') + X(5.9, 15.75, '9\' ceiling', 't-sm');
+  o += R(0.05, 20.8, 2.15, CUT - 20.8, 'appl') + X(1.12, 21.75, 'REF', 't-fix');
+  o += R(W - 2, 20.56, 2, CUT - 20.56, 'counter');
+  o += X(5.9, 21.45, 'KITCHEN', 't-room') + X(5.9, 21.9, '7\'-9" between counters', 't-sm');
+  o += L(-T, CUT, W + T, CUT, 'ghost');
+
+  // overall width and scale bar
+  o += dimH(-P, W + P, CUT + 1.0, '12\'-8"', 'dim', 't-dim');
+  o += L(W + T + 0.3, CUT + 1.0, W + T + 3.3, CUT + 1.0, 'dim');
+  for (var f = 0; f <= 3; f++) o += L(W + T + 0.3 + f, CUT + 0.87, W + T + 0.3 + f, CUT + 1.13, 'dim');
+  o += X(W + T + 0.3, CUT + 0.68, '0', 't-sm') + X(W + T + 3.3, CUT + 0.68, '3 ft', 't-sm');
+
+  // lighting, fan and alarms
+  var cross = function (x, y, r) { return C(x, y, r, 'lamp') + L(x - r * 1.6, y, x + r * 1.6, y, 'lamp') + L(x, y - r * 1.6, x, y + r * 1.6, 'lamp'); };
+  var lt = '<g id="g-light">';
+  lt += C(4.5, 3.1, 0.22, 'lamp') + L(4.34, 2.94, 4.66, 3.26, 'lamp') + L(4.34, 3.26, 4.66, 2.94, 'lamp') + X(3.72, 3.22, 'fan', 't-lamp');
+  lt += cross(6.63, 3.1, 0.2);
+  lt += C(9.3, 0.4, 0.12, 'lamp') + L(9.3, 0, 9.3, 0.28, 'lamp') + X(9.3, 0.95, 'GFI', 't-lamp');
+  lt += X(6.95, 5.24, 'SW', 't-lamp');
+  lt += cross(6.35, 7.1, 0.2);
+  lt += R(7.85, 6.82, 0.36, 0.36, 'lamp') + X(8.35, 7.13, 'CO', 't-lamp', 'start');
+  lt += C(8.03, 7.86, 0.18, 'lamp') + C(8.03, 7.86, 0.04, 'lamp') + X(8.35, 7.98, 'smoke', 't-lamp', 'start');
+  lt += cross(6.29, 16.57, 0.2) + X(6.75, 16.7, 'dimmer', 't-lamp', 'start');
+  lt += '</g>';
+
+  // wheelchair clearances
+  var cl = '<g id="g-clear">';
+  cl += C(6.2, 3.55, 2.5, 'red-fill') + X(5.6, 4.8, '5\' circle will not fit', 't-red');
+  cl += dimV(7.75, 1.89, 5.37, '3\'-6"', 'red', 't-red');
+  cl += X(9.75, 6.75, '30" clear', 't-red');
+  cl += dimV(3.35, 5.75, 8.8, '3\'-0"', 'red', 't-red');
+  cl += dimH(3.39, 6.73, 10.75, '3\'-2" opening', 'red', 't-red');
+  cl += C(5.9, 16.6, 2.5, 'red-fill') + X(5.9, 18.45, '5\' circle fits', 't-red');
+  cl += '</g>';
+
+  var svg = document.getElementById('plan');
+  svg.setAttribute('viewBox', [n(minX), n(minY), n(maxX - minX), n(maxY - minY)].join(' '));
+  svg.innerHTML = o + lt + cl;
+
+  var bind = function (boxId, groupId) {
+    var box = document.getElementById(boxId), g = document.getElementById(groupId);
+    var sync = function () { if (box.checked) g.removeAttribute('hidden'); else g.setAttribute('hidden', ''); };
+    box.addEventListener('change', sync); sync();
+  };
+  bind('layer-light', 'g-light');
+  bind('layer-clear', 'g-clear');
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body style="margin:0">
+<nav style="max-width:1180px;margin:0 auto;padding:16px 20px 0;font:14px system-ui,sans-serif"><a href="index.html" style="color:inherit">&larr; All pages</a></nav>
+<title>Hudson ADU Floor Plan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a drafting sheet. The whole-house plan runs full width; the change list and room table sit below it. */
+:root {
+  --paper: #e9edf1;
+  --sheet: #fbfcfd;
+  --ink: #1d2a38;
+  --ink-soft: #566575;
+  --rule: #c7d0d9;
+  --wall-new: #1d2a38;
+  --wall-ex: #9aa7b4;
+  --rev: #1c69ad;
+  --counter: #e1e7ed;
+  --appliance: #f5f7f9;
+  --deck: #dde4ea;
+  --redline: #c22f3d;
+  --redline-wash: rgba(194, 47, 61, 0.07);
+  --hand: "Architects Daughter", "Segoe Print", "Comic Sans MS", cursive;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1821; --sheet: #16212c; --ink: #e3eaf1; --ink-soft: #9fb0c0; --rule: #2f3e4e;
+    --wall-new: #e3eaf1; --wall-ex: #5f7186; --rev: #6cb4f5; --counter: #223140; --appliance: #1a2734; --deck: #1c2936;
+    --redline: #ff7a85; --redline-wash: rgba(255, 122, 133, 0.09);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1821; --sheet: #16212c; --ink: #e3eaf1; --ink-soft: #9fb0c0; --rule: #2f3e4e;
+  --wall-new: #e3eaf1; --wall-ex: #5f7186; --rev: #6cb4f5; --counter: #223140; --appliance: #1a2734; --deck: #1c2936;
+  --redline: #ff7a85; --redline-wash: rgba(255, 122, 133, 0.09);
+  color-scheme: dark;
+}
+
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 24px; }
+
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+h1 { font-family: var(--hand); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.lede { max-width: 65ch; color: var(--ink-soft); margin: 0; }
+a { color: var(--ink); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--redline); outline-offset: 2px; }
+
+.sheet { background: var(--sheet); border: 1px solid var(--rule); min-width: 0; }
+.sheet-bar { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+.views { display: inline-flex; border: 1px solid var(--ink); }
+.views label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; position: relative; }
+.views input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.views label:has(input:checked) { background: var(--ink); color: var(--sheet); }
+.views label:has(input:focus-visible) { outline: 2px solid var(--redline); outline-offset: 2px; }
+.toggles label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.toggles input { accent-color: var(--ink); width: 15px; height: 15px; margin: 0; }
+.toggles input:focus-visible { outline: 2px solid var(--redline); outline-offset: 2px; }
+.plan-scroll { overflow-x: auto; }
+#plan { display: block; width: 100%; min-width: 860px; height: auto; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 10px 14px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 22px; height: 9px; display: inline-block; }
+.sw.rev { background: var(--rev); }
+.sw.new { background: var(--wall-new); }
+.sw.ex { background: var(--wall-ex); }
+.sw.bar { height: 0; border-top: 3px solid var(--rev); }
+.sw.red { width: 12px; height: 12px; border: 1.5px dashed var(--redline); border-radius: 50%; }
+
+h2 { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--ink); }
+ol.changes { margin: 0; padding: 0; list-style: none; counter-reset: k; columns: 2 340px; column-gap: 32px; }
+ol.changes li { counter-increment: k; display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 14px; break-inside: avoid; }
+ol.changes li::before { content: counter(k); width: 24px; height: 24px; border-radius: 50%; background: var(--rev); color: var(--sheet); font-family: var(--mono); font-size: 12px; font-weight: 500; display: grid; place-items: center; margin-top: 1px; }
+ol.changes b { font-weight: 600; }
+
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
+th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); border-bottom-color: var(--ink); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+td.chg { color: var(--rev); font-weight: 500; }
+td.same { color: var(--ink-soft); }
+
+.review ul { margin: 0; padding: 0; list-style: none; columns: 2 340px; column-gap: 32px; }
+.review li { padding: 10px 0; border-bottom: 1px solid var(--rule); break-inside: avoid; }
+.review li b { font-weight: 600; }
+.review h2 { border-color: var(--redline); color: var(--redline); }
+.source { font-size: 13px; color: var(--ink-soft); max-width: 75ch; margin: 0; }
+
+/* drawing */
+#plan text { font-family: var(--hand); fill: var(--ink); }
+#plan .t-room { font-size: 13.5px; letter-spacing: 0.06em; }
+#plan .t-sm { font-size: 10px; fill: var(--ink-soft); }
+#plan .t-dim { font-size: 11.5px; }
+#plan .wall-new { fill: var(--wall-new); }
+#plan .wall-ex { fill: var(--wall-ex); }
+#plan .wall-rev { fill: var(--rev); }
+#plan .counter { fill: var(--counter); stroke: var(--ink); stroke-width: 0.9; }
+#plan .appl { fill: var(--appliance); stroke: var(--ink); stroke-width: 0.9; }
+#plan .appl-dash { fill: none; stroke: var(--ink); stroke-width: 0.8; stroke-dasharray: 4 3; }
+#plan .thin { fill: none; stroke: var(--ink); stroke-width: 0.8; }
+#plan .faint { fill: none; stroke: var(--ink-soft); stroke-width: 0.7; }
+#plan .ghost { fill: none; stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 5 4; }
+#plan .deck { fill: var(--deck); stroke: var(--ink-soft); stroke-width: 0.8; }
+#plan .glass { fill: var(--sheet); stroke: var(--ink); stroke-width: 0.8; }
+#plan .dim { stroke: var(--ink); stroke-width: 0.8; fill: none; }
+#plan .bar { stroke: var(--rev); stroke-width: 2.4; stroke-linecap: round; fill: none; }
+#plan .key { fill: var(--rev); }
+#plan .t-key { font-family: var(--mono); font-size: 10px; font-weight: 500; fill: var(--sheet); }
+#plan .red-fill { fill: var(--redline-wash); stroke: var(--redline); stroke-width: 1.2; stroke-dasharray: 6 4; }
+#plan .t-red { font-size: 10.5px; fill: var(--redline); }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Whole house &middot; 943 sq ft &middot; 2 bedrooms, 1 bath</span>
+    <h1>Hudson ADU Floor Plan</h1>
+    <p class="lede">The complete cottage with the aging-in-place bathroom and hallway worked in. Switch to the architect's sheet to compare. Only the middle of the house changes: the bathroom is replanned inside its walls and the hallway widens to 5 feet by moving the closet row 2 feet into the nook. Detail pages: <a href="bath-proposal.html">bath proposal</a>, <a href="bath-hall.html">bath and hall as drawn</a>, <a href="kitchen.html">kitchen</a>.</p>
+  </header>
+
+  <div class="sheet">
+    <div class="sheet-bar">
+      <div class="views" role="radiogroup" aria-label="Which layout to show">
+        <label for="view-prop"><input type="radio" name="view" id="view-prop" checked>Proposed</label>
+        <label for="view-exist"><input type="radio" name="view" id="view-exist">Architect's sheet</label>
+      </div>
+      <div class="toggles">
+        <label for="layer-clear"><input type="checkbox" id="layer-clear" checked> 5-foot turning circles</label>
+      </div>
+    </div>
+    <div class="plan-scroll">
+      <svg id="plan" role="img" aria-label="Floor plan of the whole cottage. Bedroom 1 and the living room are on the left, bedroom 2 and the deck on the right. The middle holds the bathroom at the rear, then the hallway, a closet row with laundry and water heater, the nook, and the kitchen at the front."></svg>
+    </div>
+    <div class="legend">
+      <span><i class="sw rev"></i>Wall moved or added in this proposal</span>
+      <span><i class="sw new"></i>Architect's new wall</span>
+      <span><i class="sw ex"></i>Existing wall</span>
+      <span><i class="sw bar"></i>Grab bar</span>
+      <span><i class="sw red"></i>5-foot wheelchair turning circle</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>What changes from the architect's sheet</h2>
+    <ol class="changes">
+      <li><span><b>Hallway widens to 5 feet,</b> enough to turn a wheelchair around anywhere in it.</span></li>
+      <li><span><b>Bath door becomes a 3'-0" pocket door</b> with about 34" of clear width.</span></li>
+      <li><span><b>Curbless shower, 3'-0" by 5'-4",</b> open along the long side, with a fold-down seat and two grab bars.</span></li>
+      <li><span><b>Toilet turns onto the right wall,</b> with a grab bar each side and over 3 feet of floor beside it.</span></li>
+      <li><span><b>Wall-hung sink with open knee space</b> and a 15" linen tower beside it.</span></li>
+      <li><span><b>Laundry goes side by side</b> in a 5-foot closet across from the bath door.</span></li>
+      <li><span><b>Water heater stays on the right,</b> now against the outside wall.</span></li>
+      <li><span><b>Opening to the nook moves to the left</b> and widens to 3'-6", in line with the living room and front door.</span></li>
+      <li><span><b>Bedroom doors are not moved.</b> Swing-clear hinges add about 2" of clear width to each.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Room by room</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Room</th><th>Architect's sheet</th><th>With the proposal</th></tr></thead>
+        <tbody>
+          <tr><td>Bedroom 1</td><td>13'-0" &times; 10'-4", plus closet</td><td class="same">No change</td></tr>
+          <tr><td>Bedroom 2</td><td>13'-4" &times; 12'-0", plus closet and door to deck</td><td class="same">No change</td></tr>
+          <tr><td>Living room</td><td>About 15' &times; 13', front door from the porch</td><td class="same">No change</td></tr>
+          <tr><td>Bathroom</td><td>About 11'-10" &times; 5'-4". Curbed shower, 2'-8" door swinging in, no turning space</td><td class="chg">Same walls. Curbless shower, 3'-0" pocket door, 5-foot turning circle</td></tr>
+          <tr><td>Hallway</td><td>About 3'-0" wide</td><td class="chg">5'-0" wide</td></tr>
+          <tr><td>Laundry</td><td>Stacked, 3'-0" closet</td><td class="chg">Side by side, 5'-0" closet</td></tr>
+          <tr><td>Water heater</td><td>Closet at the right of the hall</td><td class="chg">Same side, 2 feet further forward</td></tr>
+          <tr><td>Broom closet</td><td>2'-0" closet off the hall</td><td class="chg">Removed. Brooms share the coat closet</td></tr>
+          <tr><td>Opening to nook</td><td>3'-2", in the middle</td><td class="chg">3'-6", at the left</td></tr>
+          <tr><td>Nook</td><td>About 11'-10" &times; 8'-0"</td><td class="chg">About 11'-10" &times; 6'-0"</td></tr>
+          <tr><td>Kitchen</td><td>U-shape, 7'-9" between counters</td><td class="same">No change</td></tr>
+          <tr><td>Porch and deck</td><td>36 sq ft porch, 112 sq ft deck</td><td class="same">No change</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="review">
+    <h2>What it costs and what to check</h2>
+    <ul>
+      <li><b>The nook loses 2 feet.</b> At about 6 feet deep it fits a table for two to four. A 4'-6" hall gives 6 inches back.</li>
+      <li><b>The closet walls look like bracing.</b> Sheet 5 tags several "BP", for braced wall panels. Moving them needs the architect or engineer to rework the bracing.</li>
+      <li><b>Plumbing moves.</b> The toilet drain shifts about 5 feet, and the laundry and water heater connections shift 2 to 4 feet.</li>
+      <li><b>The bath turning circle relies on the sink.</b> It only works with a wall-hung sink and nothing stored underneath.</li>
+      <li><b>Curbless needs a recessed floor.</b> Decide this before the subfloor goes down.</li>
+      <li><b>Getting in is still by steps.</b> The elevations show steps at both the porch and the deck. This plan does not change that.</li>
+    </ul>
+  </section>
+
+  <p class="source">This is a concept sketch, not a construction document. It is redrawn from a scan of sheet 5 of the architect's permit set. Overall dimensions and room sizes are the ones written on the sheet. Window positions, the deck and porch steps, and everything in the bathroom, hall and kitchen are scaled from the scan and are approximate.</p>
+</div>
+
+<script>
+(function () {
+  // Feet. House coordinates start at the outside rear-left corner; rear of house is up, front is down.
+  var S = 20, T = 0.45, W = 11.83, P = 0.38;
+  var BX = 16.09, BY = 0.45;            // middle bay: inside rear-left corner of the bathroom
+  var minX = -3.2, minY = -3.2, maxX = 47.4, maxY = 34.2;
+  var n = function (v) { return +(v * S).toFixed(1); };
+  var R = function (x, y, w, h, c, rx) { return '<rect x="' + n(x) + '" y="' + n(y) + '" width="' + n(w) + '" height="' + n(h) + '" class="' + c + '"' + (rx ? ' rx="' + rx + '"' : '') + '/>'; };
+  var L = function (x1, y1, x2, y2, c) { return '<line x1="' + n(x1) + '" y1="' + n(y1) + '" x2="' + n(x2) + '" y2="' + n(y2) + '" class="' + c + '"/>'; };
+  var C = function (x, y, r, c) { return '<circle cx="' + n(x) + '" cy="' + n(y) + '" r="' + n(r) + '" class="' + c + '"/>'; };
+  var E = function (x, y, rx, ry, c) { return '<ellipse cx="' + n(x) + '" cy="' + n(y) + '" rx="' + n(rx) + '" ry="' + n(ry) + '" class="' + c + '"/>'; };
+  var X = function (x, y, s, c, a, rot) { return '<text x="' + n(x) + '" y="' + n(y) + '" class="' + c + '" text-anchor="' + (a || 'middle') + '"' + (rot ? ' transform="rotate(-90 ' + n(x) + ' ' + n(y) + ')"' : '') + '>' + s + '</text>'; };
+  var arc = function (x1, y1, x2, y2, r, sweep) { return '<path class="faint" d="M' + n(x1) + ' ' + n(y1) + ' A' + n(r) + ' ' + n(r) + ' 0 0 ' + sweep + ' ' + n(x2) + ' ' + n(y2) + '"/>'; };
+  var tick = function (x, y) { return L(x - 0.25, y + 0.25, x + 0.25, y - 0.25, 'dim'); };
+  var dimH = function (x1, x2, y, s) { return L(x1, y, x2, y, 'dim') + tick(x1, y) + tick(x2, y) + X((x1 + x2) / 2, y - 0.28, s, 't-dim'); };
+  var dimV = function (x, y1, y2, s) { return L(x, y1, x, y2, 'dim') + tick(x, y1) + tick(x, y2) + X(x - 0.3, (y1 + y2) / 2, s, 't-dim', 'middle', true); };
+  var K = function (x, y, num) { return C(x, y, 0.44, 'key') + X(x, y + 0.18, num, 't-key'); };
+  var bay = function (inner) { return '<g transform="translate(' + n(BX) + ' ' + n(BY) + ')">' + inner + '</g>'; };
+
+  // Everything both layouts share. w1,w2 = bathroom window position along the rear wall, in bay feet.
+  var shell = function (w1, w2) {
+    var o = '';
+    // deck, deck steps, porch, porch steps
+    o += R(28.34, 12, 15.99, 6, 'deck') + R(28.34, 18, 3.5, 3, 'deck') + R(32.2, 18, 8.3, 2.8, 'deck');
+    o += L(32.2, 18.95, 40.5, 18.95, 'faint') + L(32.2, 19.9, 40.5, 19.9, 'faint');
+    o += X(38.3, 15.0, '(N) DECK', 't-room') + X(38.3, 15.8, '112 sq ft', 't-sm') + X(36.35, 21.6, 'steps', 't-sm');
+    o += R(9.67, 24, 6, 6, 'deck') + R(9.67, 30, 6, 1.8, 'deck') + L(9.67, 30.9, 15.67, 30.9, 'faint');
+    o += X(12.67, 27.0, 'PORCH', 't-room') + X(12.67, 27.8, '36 sq ft', 't-sm') + X(12.67, 32.6, 'steps', 't-sm');
+
+    // outside walls
+    o += R(0, 0, 44.33, T, 'wall-ex') + R(0, 0, T, 24, 'wall-ex') + R(43.88, 0, T, 12, 'wall-ex');
+    o += R(0, 23.55, 12.15, T, 'wall-ex') + R(15.19, 23.55, 0.9, T, 'wall-ex');
+    o += R(28.34, 11.55, 15.99, T, 'wall-ex');
+    o += R(15.67, 0.45, 0.42, 6.1, 'wall-ex') + R(15.67, 9.22, 0.42, 3.83, 'wall-ex') + R(15.67, 20.71, 0.42, 3.29, 'wall-ex') + R(15.67, 24, 0.42, 6, 'wall-new');
+    o += R(27.92, 0.45, 0.42, 6.0, 'wall-ex') + R(27.92, 9.11, 0.42, 6.0, 'wall-ex') + R(27.92, 17.85, 0.42, 0.16, 'wall-ex') + R(27.92, 20.71, 0.42, 2.8, 'wall-ex') + R(27.92, 23.51, 0.42, 6.49, 'wall-new');
+    o += R(15.67, 29.55, 12.67, T, 'wall-new');
+    // windows and glazed doors
+    o += R(9.9, 0, 2.5, T, 'glass') + R(BX + w1, 0, w2 - w1, T, 'glass') + R(34.2, 0, 6, T, 'glass');
+    o += R(0, 3.5, T, 3, 'glass') + R(0, 18.8, T, 3, 'glass') + R(43.88, 3.4, T, 5.2, 'glass');
+    o += R(3.6, 23.55, 5.1, T, 'glass') + R(19.09, 29.55, 2.5, T, 'glass') + R(22.24, 29.55, 2.5, T, 'glass');
+    o += R(27.92, 15.11, 0.42, 2.74, 'glass') + R(31.5, 11.55, 8, T, 'glass');
+    o += X(35.5, 13.0, '8\' sliding door (optional)', 't-sm');
+
+    // left wing
+    o += R(0.45, 10.15, 15.22, 0.3, 'wall-new');
+    o += L(13.09, 0.75, 13.09, 5.65, 'ghost') + R(13.09, 5.85, 2.58, 0.35, 'wall-new') + X(14.4, 3.3, 'CL.', 't-sm');
+    o += R(12.79, 10.45, 0.4, 2.6, 'wall-new') + L(13.19, 13.05, 15.19, 13.05, 'thin') + X(14.4, 11.95, 'COAT', 't-sm');
+    o += L(15.67, 6.55, 13.36, 7.88, 'thin') + arc(15.67, 9.22, 13.36, 7.88, 2.67, 1);
+    o += L(15.19, 23.55, 13.07, 21.43, 'thin') + arc(12.19, 23.55, 13.07, 21.43, 3.0, 1);
+    o += X(6.6, 5.0, 'BEDROOM 1', 't-room') + X(6.6, 5.8, '13\'-0" x 10\'-4"', 't-sm');
+    o += X(6.8, 16.6, 'LIVING ROOM', 't-room') + X(6.8, 17.4, 'about 15\' x 13\'', 't-sm');
+    o += X(13.6, 22.9, '3/0', 't-sm', 'end');
+
+    // right wing
+    o += L(30.9, 0.75, 30.9, 5.65, 'ghost') + R(28.34, 5.85, 2.86, 0.35, 'wall-new') + X(29.6, 3.3, 'CL.', 't-sm');
+    o += L(28.34, 9.11, 30.34, 7.23, 'thin') + arc(28.34, 6.45, 30.34, 7.23, 2.67, 1);
+    o += R(28.34, 9.75, 2.5, 1.8, 'appl') + X(29.6, 10.8, 'built-in', 't-sm');
+    o += X(37.6, 6.0, 'BEDROOM 2', 't-room') + X(37.6, 6.8, '13\'-4" x 12\'-0"', 't-sm');
+
+    // kitchen and the door to the deck (bay coordinates)
+    var k = '';
+    var u = [[0, 20.56], [2.1, 20.56], [2.1, 27.16], [W - 2, 27.16], [W - 2, 20.56], [W, 20.56], [W, 29.1], [0, 29.1]];
+    k += R(0, 20.26, 2.27, 0.3, 'wall-new');
+    k += '<polygon class="counter" points="' + u.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' ') + '"/>';
+    k += R(0.05, 20.8, 2.15, 2.6, 'appl') + X(1.12, 22.3, 'REF', 't-sm');
+    k += R(0, 23.51, 2.1, 1.6, 'appl') + L(0, 23.51, 2.1, 25.11, 'faint') + L(2.1, 23.51, 0, 25.11, 'faint');
+    k += R(2.27, 27.16, 2.09, 1.94, 'appl-dash') + X(3.31, 28.3, 'DW', 't-sm');
+    k += R(4.55, 27.42, 2.75, 1.4, 'appl', 4) + R(4.7, 27.55, 1.15, 1.1, 'thin', 5) + R(6.0, 27.55, 1.15, 1.1, 'thin', 5);
+    k += R(W - 2.1, 22.41, 2.1, 2.51, 'appl');
+    [[1.5, 23.06], [0.58, 23.06], [1.5, 24.28], [0.58, 24.28]].forEach(function (p) { k += C(W - p[0], p[1], 0.33, 'thin'); });
+    k += L(2.1, 23.55, W - 2, 23.55, 'ghost');
+    k += X(5.9, 25.6, 'KITCHEN', 't-room') + X(5.9, 26.4, '76 sq ft addition', 't-sm');
+    k += L(W, 20.26, W - 1.91, 18.35, 'thin') + arc(W, 17.56, W - 1.91, 18.35, 2.7, 0);
+    o += bay(k);
+
+    // dimensions, scale bar, orientation
+    o += dimH(0, 15.67, -0.9, '15\'-8"') + dimH(15.67, 28.33, -0.9, '12\'-8"') + dimH(28.33, 44.33, -0.9, '16\'-0"');
+    o += dimH(0, 44.33, -2.2, '44\'-4"');
+    o += dimV(-1.2, 0, 24, '24\'-0"') + dimV(-2.4, 0, 30, '30\'-0"');
+    o += L(0, 32.6, 10, 32.6, 'dim') + L(0, 32.35, 0, 32.85, 'dim') + L(5, 32.35, 5, 32.85, 'dim') + L(10, 32.35, 10, 32.85, 'dim');
+    o += X(0, 33.7, '0', 't-sm') + X(5, 33.7, '5', 't-sm') + X(10, 33.7, '10 ft', 't-sm');
+    o += X(22, 31.6, 'FRONT OF HOUSE (NORTHEAST)', 't-sm');
+    return o;
+  };
+
+  // ---------- proposed middle bay ----------
+  var p = '';
+  p += R(0, 5.37, 5.4, P, 'wall-ex');
+  p += R(8.4, 5.37, W - 8.4, 0.12, 'wall-rev') + R(8.4, 5.63, W - 8.4, 0.12, 'wall-rev') + R(7.3, 5.5, 3.0, 0.12, 'appl');
+  p += R(3.5, 10.75, 0.35, 3.75, 'wall-rev') + R(8.85, 10.75, 0.35, 3.35, 'wall-rev');
+  p += R(3.5, 14.1, W - 3.5, 0.4, 'wall-rev') + R(11.6, 10.75, W - 11.6, 0.35, 'wall-rev');
+  p += L(3.85, 10.92, 8.85, 10.92, 'thin') + L(9.2, 10.92, 11.6, 10.92, 'thin');
+  p += R(4.0, 11.4, 2.25, 2.55, 'appl') + C(5.12, 12.67, 0.72, 'thin') + R(6.45, 11.4, 2.25, 2.55, 'appl') + C(7.57, 12.67, 0.72, 'thin');
+  p += C(10.5, 12.7, 1.0, 'appl') + X(10.5, 13.35, 'WH', 't-sm');
+  p += R(0, 0, 3.0, 5.37, 'appl') + L(3.0, 0, 3.0, 2.0, 'thin') + L(3.04, 2.0, 3.04, 5.37, 'ghost');
+  p += R(0.55, 0, 1.9, 1.3, 'counter');
+  p += L(0.16, 1.7, 0.16, 4.5, 'bar') + L(0.5, 5.2, 2.5, 5.2, 'bar');
+  p += R(3.14, 0, 1.25, 1.5, 'appl');
+  p += R(4.45, 0, 2.85, 1.67, 'counter') + E(5.87, 0.82, 0.78, 0.55, 'appl');
+  p += R(W - 0.72, 0.7, 0.62, 1.6, 'appl', 3) + E(W - 1.5, 1.5, 0.78, 0.46, 'appl');
+  p += L(7.33, 0.16, 10.83, 0.16, 'bar') + L(W - 0.1, 2.9, W - 2.4, 2.9, 'bar');
+  p += X(7.2, 3.35, 'BATH', 't-room') + X(8.6, 8.5, 'HALL', 't-room') + X(8.6, 9.3, '5\'-0" wide', 't-sm');
+  p += X(5.9, 17.0, 'NOOK', 't-room') + X(5.9, 17.8, 'about 6\' deep', 't-sm');
+  p += K(10.9, 6.9, 1) + K(6.5, 6.5, 2) + K(1.55, 3.0, 3) + K(10.5, 4.0, 4) + K(5.2, 2.4, 5) + K(6.35, 12.67, 6) + K(10.5, 11.75, 7) + K(1.75, 12.3, 8) + K(-1.5, 8.6, 9);
+  var pc = '<g class="clear">' + bay(C(6.93, 2.87, 2.5, 'red-fill') + C(2.6, 8.25, 2.5, 'red-fill') + C(5.9, 17.2, 2.5, 'red-fill') + C(5.9, 23.4, 2.5, 'red-fill')) + '</g>';
+
+  // ---------- architect's middle bay ----------
+  var e = '';
+  e += R(0, 5.37, 8.33, P, 'wall-ex') + R(11.08, 5.37, W - 11.08, P, 'wall-ex');
+  e += R(3.0, 8.8, 0.39, 3.8, 'wall-new') + R(0, 12.2, 3.39, 0.4, 'wall-new');
+  e += R(6.73, 8.8, 2.85, 0.38, 'wall-new') + R(11.6, 8.8, W - 11.6, 0.38, 'wall-new');
+  e += R(9.05, 9.18, 0.34, 3.02, 'wall-new') + R(6.73, 12.2, W - 6.73, 0.4, 'wall-new') + R(6.73, 9.18, 0.39, 3.02, 'thin');
+  e += R(0, 0, 3.0, 5.37, 'appl') + L(3.04, 0, 3.04, 5.37, 'thin');
+  e += R(3.73, 0.15, 1.64, 0.75, 'appl', 3) + E(4.55, 1.62, 0.46, 0.7, 'appl');
+  e += R(5.76, 0, 4.07, 1.89, 'counter') + E(7.79, 0.95, 0.9, 0.66, 'appl');
+  e += R(9.83, 0, 2.0, 1.85, 'appl');
+  e += L(11.08, 5.37, 9.29, 3.49, 'thin') + arc(8.41, 5.37, 9.29, 3.49, 2.67, 1);
+  e += L(11.6, 8.8, 10.2, 7.4, 'thin') + arc(9.6, 8.8, 10.2, 7.4, 2.0, 1);
+  e += L(0.1, 8.98, 3.0, 8.98, 'thin');
+  e += R(0.35, 9.45, 2.35, 2.5, 'appl') + X(1.52, 10.9, 'W/D', 't-sm');
+  e += X(8.1, 10.9, 'broom', 't-sm') + C(10.6, 10.75, 0.85, 'appl') + X(10.6, 10.95, 'WH', 't-sm');
+  e += X(1.5, 2.9, 'shower', 't-sm');
+  e += X(6.2, 3.2, 'BATH', 't-room') + X(3.6, 7.3, 'HALL', 't-room') + X(3.6, 8.1, '3\'-0" wide', 't-sm');
+  e += X(5.9, 16.2, 'NOOK', 't-room') + X(5.9, 17.0, 'about 8\' deep', 't-sm');
+  var ec = '<g class="clear">' + bay(C(6.2, 3.55, 2.5, 'red-fill') + X(6.2, 4.6, 'will not fit', 't-red') + C(5.9, 16.6, 2.5, 'red-fill') + C(5.9, 23.4, 2.5, 'red-fill')) + '</g>';
+
+  var svg = document.getElementById('plan');
+  svg.setAttribute('viewBox', [n(minX), n(minY), n(maxX - minX), n(maxY - minY)].join(' '));
+  svg.innerHTML = '<g id="v-prop">' + shell(8.2, 10.2) + bay(p) + pc + '</g><g id="v-exist" hidden>' + shell(3.29, 5.42) + bay(e) + ec + '</g>';
+
+  var show = function (el, on) { if (on) el.removeAttribute('hidden'); else el.setAttribute('hidden', ''); };
+  var vp = document.getElementById('view-prop'), ve = document.getElementById('view-exist'), cb = document.getElementById('layer-clear');
+  var sync = function () {
+    show(document.getElementById('v-prop'), vp.checked);
+    show(document.getElementById('v-exist'), ve.checked);
+    Array.prototype.forEach.call(svg.querySelectorAll('.clear'), function (g) { show(g, cb.checked); });
+  };
+  [vp, ve, cb].forEach(function (el) { el.addEventListener('change', sync); });
+  sync();
+})();
+</script>
+
+</body>
+</html>
