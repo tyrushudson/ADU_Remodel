@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Hudson ADU Walkthrough</title>
+<style>
+/* Layout: the 3D view fills the screen; three small panels float over it. */
+:root {
+  --bg: #bfdcf0;
+  --panel: rgba(251, 252, 253, 0.9);
+  --ink: #1d2a38;
+  --ink-soft: #566575;
+  --rule: #c7d0d9;
+  --accent: #5f7a4f;
+  --body: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --panel: rgba(22, 33, 44, 0.9); --ink: #e3eaf1; --ink-soft: #9fb0c0; --rule: #2f3e4e; --accent: #a9c596; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --panel: rgba(22, 33, 44, 0.9); --ink: #e3eaf1; --ink-soft: #9fb0c0; --rule: #2f3e4e; --accent: #a9c596; color-scheme: dark; }
+
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.4; }
+#view { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; outline: none; }
+.hud { position: fixed; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 12px; }
+#where { top: calc(12px + env(safe-area-inset-top, 0px)); left: 16px; display: flex; flex-direction: column; gap: 1px; pointer-events: none; }
+#where b { font-size: 15px; font-weight: 600; }
+#where span { font-size: 12px; color: var(--ink-soft); }
+#help { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; max-width: 520px; pointer-events: none; font-size: 13px; }
+#help b { font-weight: 600; }
+#jumps { top: calc(12px + env(safe-area-inset-top, 0px)); right: 16px; display: flex; flex-wrap: wrap; gap: 6px; max-width: min(420px, calc(100% - 200px)); justify-content: flex-end; padding: 6px; }
+#jumps button { font: inherit; font-size: 12.5px; color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 4px; padding: 4px 9px; cursor: pointer; }
+#jumps button:hover { border-color: var(--accent); color: var(--accent); }
+#jumps button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#dot { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.8); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); pointer-events: none; }
+@media (max-width: 560px) { #jumps { max-width: calc(100% - 32px); top: auto; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); right: 16px; left: 16px; justify-content: flex-start; } }
+</style>
+
+<canvas id="view" tabindex="0" aria-label="3D walkthrough of the proposed cottage"></canvas>
+<div id="dot"></div>
+<div class="hud" id="where"><b id="room">Front yard</b><span>Hudson ADU, proposed layout</span></div>
+<div class="hud" id="jumps" role="group" aria-label="Jump to a room">
+  <button type="button" data-j="yard">Front yard</button>
+  <button type="button" data-j="porch">Front door</button>
+  <button type="button" data-j="living">Living room</button>
+  <button type="button" data-j="kitchen">Kitchen</button>
+  <button type="button" data-j="dining">Dining</button>
+  <button type="button" data-j="bath">Bathroom</button>
+  <button type="button" data-j="primary">Primary bedroom</button>
+  <button type="button" data-j="bed2">Bedroom 2</button>
+  <button type="button" data-j="deck">Deck</button>
+  <button type="button" data-j="rear">Rear yard</button>
+</div>
+<div class="hud" id="help"><b>Hold the left mouse button</b> to walk forward. <b>Move the mouse</b> to look around. Press Esc to free the mouse. <span id="msg"></span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var msg = document.getElementById('msg');
+  if (!window.THREE) { msg.textContent = 'The 3D library did not load. Check the internet connection and reload.'; return; }
+
+  // Feet. x = east, z = toward the front of the house, y = up. Plan origin is the outside rear-left corner.
+  var F = 1.75, H = 9, P = F + H, PITCH = 7 / 12;
+  var canvas = document.getElementById('view');
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xbfdcf0);
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  var camera = new THREE.PerspectiveCamera(70, 1, 0.1, 900);
+  camera.rotation.order = 'YXZ';
+
+  // Morning sun from the east: it lights the front and the deck side, and comes in through those windows.
+  scene.add(new THREE.HemisphereLight(0xe6f0ff, 0xa89c8a, 0.6));
+  var sun = new THREE.DirectionalLight(0xffe7c4, 1.1);
+  sun.position.set(22 + 70, 72, 15 + 62);
+  sun.target.position.set(22, 0, 15);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.camera.left = -62; sun.shadow.camera.right = 62; sun.shadow.camera.top = 62; sun.shadow.camera.bottom = -62;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 320;
+  sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.06;
+  scene.add(sun); scene.add(sun.target);
+  scene.fog = new THREE.Fog(0xd5e4ef, 220, 800);
+  // sky dome, pale at the horizon
+  var skyGeo = new THREE.SphereGeometry(700, 24, 16), skyCol = [], sp = skyGeo.attributes.position;
+  for (var si = 0; si < sp.count; si++) {
+    var k = Math.max(0, Math.min(1, sp.getY(si) / 420)), c = new THREE.Color(0xe3eef5).lerp(new THREE.Color(0x5f9bd1), Math.pow(k, 0.6));
+    skyCol.push(c.r, c.g, c.b);
+  }
+  skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyCol, 3));
+  var sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false }));
+  sky.position.set(22, 0, 15); scene.add(sky);
+
+  // ---------- textures ----------
+  function tex(size, draw, rx, ry) {
+    var c = document.createElement('canvas'); c.width = size[0]; c.height = size[1];
+    draw(c.getContext('2d'), size[0], size[1]);
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
+    t.encoding = THREE.sRGBEncoding; t.anisotropy = 8;
+    return t;
+  }
+  var seed = 7;
+  function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  // mahogany planks: one tile is 4 ft square, boards about 5 inches wide
+  var floorTex = tex([512, 512], function (g, w, h) {
+    var rows = 10, rh = h / rows;
+    for (var r = 0; r < rows; r++) {
+      var x = -rnd() * w * 0.6;
+      while (x < w) {
+        var len = w * (0.45 + rnd() * 0.5);
+        var k = rnd();
+        g.fillStyle = 'rgb(' + Math.round(96 + k * 34) + ',' + Math.round(38 + k * 16) + ',' + Math.round(24 + k * 10) + ')';
+        g.fillRect(x, r * rh, len, rh);
+        g.strokeStyle = 'rgba(40,12,6,0.16)';
+        for (var s = 0; s < 5; s++) { var yy = r * rh + 3 + rnd() * (rh - 6); g.beginPath(); g.moveTo(x, yy); g.lineTo(x + len, yy + (rnd() - 0.5) * 3); g.stroke(); }
+        g.fillStyle = 'rgba(30,8,4,0.6)'; g.fillRect(x + len - 1, r * rh, 2, rh);
+        x += len;
+      }
+      g.fillStyle = 'rgba(30,8,4,0.6)'; g.fillRect(0, r * rh, w, 1.5);
+    }
+  }, 0.25, 0.25);
+  // lap siding: one tile is one 6-inch course
+  var sidingTex = tex([8, 64], function (g, w, h) {
+    g.fillStyle = '#656d73'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#6f777d'; g.fillRect(0, 0, w, 10);
+    g.fillStyle = '#474e54'; g.fillRect(0, h - 7, w, 7);
+  }, 1, 2);
+  var deckTex = tex([64, 64], function (g, w, h) {
+    g.fillStyle = '#8f6c54'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#5c4334'; g.fillRect(0, 0, w, 3);
+  }, 1, 2);
+
+  // dark gray quartz, after MSI Babylon Gray: one tile is 2 ft square
+  var counterTex = tex([256, 256], function (g, w, h) {
+    g.fillStyle = '#595c5e'; g.fillRect(0, 0, w, h);
+    for (var i = 0; i < 900; i++) {
+      g.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.06)';
+      g.fillRect(rnd() * w, rnd() * h, 2 + rnd() * 10, 1 + rnd() * 4);
+    }
+  }, 0.5, 0.5);
+  // beige porcelain with soft taupe and gold veining, after MSI Stile Taja Perla: one tile is 4 ft square
+  function perla(grout) {
+    return tex([512, 512], function (g, w, h) {
+      g.fillStyle = '#e7dece'; g.fillRect(0, 0, w, h);
+      for (var i = 0; i < 26; i++) {
+        var x = rnd() * w, y = rnd() * h, len = 120 + rnd() * 380, ang = -0.5 + rnd() * 0.5;
+        g.strokeStyle = rnd() > 0.3 ? 'rgba(170,150,122,' + (0.10 + rnd() * 0.16) + ')' : 'rgba(196,166,110,' + (0.10 + rnd() * 0.14) + ')';
+        g.lineWidth = 1 + rnd() * 5; g.beginPath(); g.moveTo(x, y);
+        for (var s = 0; s < 6; s++) { x += Math.cos(ang) * len / 6; y += Math.sin(ang) * len / 6 + (rnd() - 0.5) * 18; g.lineTo(x, y); }
+        g.stroke();
+      }
+      if (grout) { g.fillStyle = 'rgba(150,140,125,0.9)'; [0, 256].forEach(function (p) { g.fillRect(p, 0, 2.5, h); g.fillRect(0, p, w, 2.5); }); }
+    }, 0.25, 0.25);
+  }
+
+  function L(color, extra) { var o = { color: color, roughness: 0.9, metalness: 0 }; if (extra) for (var k in extra) o[k] = extra[k]; return new THREE.MeshStandardMaterial(o); }
+  var M = {
+    siding: L(0xffffff, { map: sidingTex }), gable: L(0x656d73, { side: THREE.DoubleSide }),
+    wall: L(0xf3efe6), ceiling: L(0xfbfaf6), trim: L(0xffffff), white: L(0xf8f7f3, { roughness: 0.6 }), panel: L(0xe9e7e0, { roughness: 0.6 }),
+    black: L(0x1b1b1b, { roughness: 0.5 }), steel: L(0xc2c6cb, { roughness: 0.35, metalness: 0.25 }), dark: L(0x2c2f33),
+    // wall paint, earthy tones
+    pOpen: L(0xd0c5b4), pPrimary: L(0xb39483), pBed2: L(0x95978a), pBath: L(0xacad97),
+    glass: new THREE.MeshPhongMaterial({ color: 0xcfe6f2, transparent: true, opacity: 0.22, shininess: 90, side: THREE.DoubleSide, depthWrite: false }),
+    floor: L(0xffffff, { map: floorTex, roughness: 0.45 }), deck: L(0xffffff, { map: deckTex }),
+    concrete: L(0xb3b0a8), roof: L(0x474b50, { side: THREE.DoubleSide }), grass: L(0x7d9f69, { roughness: 1 }), path: L(0xc9c5bb),
+    counter: L(0xffffff, { map: counterTex, roughness: 0.5 }), tile: L(0xffffff, { map: perla(false), roughness: 0.25 }),
+    tileFloor: L(0xffffff, { map: perla(true), roughness: 0.4 }), basin: L(0xe2e2de, { roughness: 0.3 }), teak: L(0xa9794f), oak: L(0xc9a877, { roughness: 0.7 }),
+    frontDoor: L(0x2f3a40), frontDoorPanel: L(0x27313a),
+    linen: L(0xf4f2ec), blue: L(0x7f97a8), oat: L(0xcfc4b0), rust: L(0xb5694a), mirror: new THREE.MeshPhongMaterial({ color: 0xc9d6dc, shininess: 120 })
+  };
+
+  var colliders = [];
+  function worldUV(geo, w, h, d) {
+    var uv = geo.attributes.uv;
+    for (var i = 0; i < 24; i++) {
+      var f = Math.floor(i / 4), su = f < 2 ? d : w, sv = (f === 2 || f === 3) ? d : h;
+      uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+    }
+  }
+  // Box from absolute coordinates. col = true makes it block walking.
+  function B(x0, x1, y0, y1, z0, z1, m, col, parent) {
+    var w = Math.abs(x1 - x0), h = Math.abs(y1 - y0), d = Math.abs(z1 - z0);
+    var g = new THREE.BoxGeometry(w, h, d);
+    if (!Array.isArray(m) && m.map) worldUV(g, w, h, d);
+    var me = new THREE.Mesh(g, m);
+    me.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    (parent || scene).add(me);
+    if (col) colliders.push([Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)]);
+    return me;
+  }
+  function block(x0, x1, z0, z1) { colliders.push([x0, x1, z0, z1]); }
+  function poly(pts, m) {
+    var pos = [];
+    for (var i = 1; i < pts.length - 1; i++) pos.push.apply(pos, pts[0].concat(pts[i], pts[i + 1]));
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    scene.add(new THREE.Mesh(g, m));
+  }
+  function cyl(a, b, r, m) {
+    var va = new THREE.Vector3(a[0], a[1], a[2]), vb = new THREE.Vector3(b[0], b[1], b[2]);
+    var d = vb.clone().sub(va);
+    var me = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 12), m);
+    me.position.copy(va).add(vb).multiplyScalar(0.5);
+    me.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    scene.add(me);
+    return me;
+  }
+
+  // ---------- walls ----------
+  // A wall runs along `axis` from a0 to a1 and occupies c0..c1 across. ops = openings {a,b,sill,head}.
+  // lo / hi = paint for the face on the low-coordinate side and the high-coordinate side.
+  function wall(axis, c0, c1, a0, a1, ops, m, col, lo, hi) {
+    if (lo || hi) { lo = lo || m; hi = hi || m; m = axis === 'x' ? [m, m, m, m, hi, lo] : [hi, lo, m, m, m, m]; }
+    function seg(a, b, y0, y1, cl) {
+      if (b - a < 0.01 || y1 - y0 < 0.01) return;
+      if (axis === 'x') B(a, b, y0, y1, c0, c1, m, cl); else B(c0, c1, y0, y1, a, b, m, cl);
+    }
+    var cur = a0;
+    (ops || []).forEach(function (o) {
+      seg(cur, o.a, F, P, col);
+      if (o.sill > 0) seg(o.a, o.b, F, F + o.sill, col);
+      seg(o.a, o.b, F + o.head, P, false);
+      cur = o.b;
+    });
+    seg(cur, a1, F, P, col);
+  }
+  // Casing, and for windows the glass, meeting rail and mullions.
+  function trim(axis, c0, c1, o) {
+    var A = c0 - 0.05, Z = c1 + 0.05, y0 = F + (o.sill || 0), y1 = F + o.head, cm = (c0 + c1) / 2;
+    function S(a, b, ya, yb, ca, cb, m) { if (axis === 'x') B(a, b, ya, yb, ca, cb, m); else B(ca, cb, ya, yb, a, b, m); }
+    S(o.a - 0.28, o.a, y0, y1, A, Z, M.trim); S(o.b, o.b + 0.28, y0, y1, A, Z, M.trim);
+    S(o.a - 0.28, o.b + 0.28, y1, y1 + 0.3, A, Z, M.trim);
+    if (o.sill > 0) {
+      S(o.a - 0.28, o.b + 0.28, y0 - 0.15, y0, A - 0.05, Z + 0.05, M.trim);
+      S(o.a, o.b, y0, y1, cm - 0.02, cm + 0.02, M.glass);
+      if (o.rail !== false) S(o.a, o.b, (y0 + y1) / 2 - 0.05, (y0 + y1) / 2 + 0.05, cm - 0.06, cm + 0.06, M.trim);
+      (o.mull || []).forEach(function (mx) { S(mx - 0.08, mx + 0.08, y0, y1, cm - 0.06, cm + 0.06, M.trim); });
+    }
+  }
+  function inner(axis, c0, c1, a0, a1, ops, lo, hi) { wall(axis, c0, c1, a0, a1, ops, M.wall, true, lo, hi); (ops || []).forEach(function (o) { trim(axis, c0, c1, o); }); }
+  // Outside wall: a siding skin outside, the room's paint inside.
+  function ext(axis, outer, dir, a0, a1, ops, paint) {
+    var s = outer + dir * 0.12, e = outer + dir * 0.45;
+    wall(axis, Math.min(outer, s), Math.max(outer, s), a0, a1, ops, M.siding, false);
+    wall(axis, Math.min(s, e), Math.max(s, e), a0, a1, ops, M.wall, true, dir < 0 ? paint : null, dir > 0 ? paint : null);
+    (ops || []).forEach(function (o) { trim(axis, Math.min(outer, e), Math.max(outer, e), o); });
+  }
+  function win(a, b, sill, head, extra) { var o = { a: a, b: b, sill: sill, head: head }; if (extra) for (var k in extra) o[k] = extra[k]; return o; }
+  function door(a, b, head) { return { a: a, b: b, sill: 0, head: head || 6.67 }; }
+
+  // outside walls
+  ext('x', 0, 1, 0, 15.88, [win(9.9, 12.4, 2.67, 6.67)], M.pBed2);
+  ext('x', 0, 1, 15.88, 28.13, [win(25.09, 27.09, 5, 7, { rail: false })], M.pBath);
+  ext('x', 0, 1, 28.13, 44.33, [win(34.2, 40.2, 5, 7, { rail: false, mull: [37.2] })], M.pPrimary);
+  ext('z', 0, 1, 0, 10.3, [win(3.5, 6.5, 1.67, 6.67)], M.pBed2);
+  ext('z', 0, 1, 10.3, 24, [win(18.8, 21.8, 1.67, 6.67)], M.pOpen);
+  ext('x', 24, -1, 0, 15.67, [win(3.6, 8.7, 2.67, 6.67, { mull: [6.15] }), door(12.15, 15.19)], M.pOpen);
+  ext('z', 15.67, 1, 24, 30, [], M.pOpen);
+  ext('x', 30, -1, 15.67, 28.34, [win(18.44, 20.44, 3.5, 7.5), win(20.77, 23.27, 3.5, 7.5), win(23.6, 25.6, 3.5, 7.5)], M.pOpen);
+  ext('z', 28.34, -1, 12, 30, [win(14.9, 17.4, 2.67, 6.67), door(17.71, 20.71)], M.pOpen);
+  ext('x', 12, -1, 28.34, 44.33, [door(32.5, 38.5, 8)], M.pPrimary);
+  ext('z', 44.33, -1, 0, 12, [win(3.4, 8.6, 1.67, 6.67, { mull: [6.0] })], M.pPrimary);
+  // inside walls: (…, paint on the low side, paint on the high side)
+  inner('z', 15.67, 16.09, 0.45, 8.14, [], M.pBed2, M.pBath);
+  inner('z', 15.67, 16.09, 8.14, 10.45, [], M.pBed2, M.pOpen);
+  inner('z', 15.67, 16.09, 20.71, 24, [], M.pOpen, M.pOpen);
+  inner('x', 20.71, 21.01, 16.09, 18.36, [], M.pOpen, M.pOpen);
+  inner('z', 27.92, 28.34, 0.45, 8.14, [], M.pBath, M.pPrimary);
+  inner('z', 27.92, 28.34, 8.14, 12, [door(8.35, 11.35)], M.pOpen, M.pPrimary);
+  inner('x', 10.15, 10.45, 0.45, 15.67, [door(12.4, 15.4)], M.pBed2, M.pOpen);
+  inner('x', 5.85, 6.2, 13.0, 15.67, [], null, M.pBed2);
+  inner('x', 5.85, 6.2, 28.34, 31.2, [], null, M.pPrimary);
+  inner('x', 7.95, 8.33, 16.09, 27.92, [door(20.29, 23.29)], M.pBath, M.pOpen);
+  inner('x', 5.2, 5.48, 16.09, 19.14, [], M.pBath, null);
+  inner('z', 18.84, 19.14, 5.48, 7.95, [], null, M.pBath);
+
+  // foundation, floors, ceilings, corner boards
+  [[0, 15.67, 0, 24], [15.67, 28.34, 0, 30], [28.34, 44.33, 0, 12]].forEach(function (r) {
+    B(r[0], r[1], 0, F - 0.02, r[2], r[3], M.concrete);
+    B(r[0] + 0.1, r[1] - 0.1, F - 0.1, F, r[2] + 0.1, r[3] - 0.1, M.floor);
+    B(r[0] + 0.1, r[1] - 0.1, P - 0.05, P + 0.05, r[2] + 0.1, r[3] - 0.1, M.ceiling);
+  });
+  [[0, 0], [44.33, 0], [44.33, 12], [0, 24], [15.67, 30], [28.34, 30], [15.67, 24], [28.34, 12]].forEach(function (c) {
+    B(c[0] - 0.2, c[0] + 0.2, F, P, c[1] - 0.2, c[1] + 0.2, M.trim);
+  });
+
+  // ---------- roof (from the elevations: 7 in 12 gables, 9 ft plate) ----------
+  var top = P + 12 * PITCH, ey = P - 1.5 * PITCH;
+  poly([[-1.2, ey, -1.5], [28.34, ey, -1.5], [28.34, top, 12], [-1.2, top, 12]], M.roof);
+  poly([[-1.2, ey, 25.5], [15.67, ey, 25.5], [15.67, top, 12], [-1.2, top, 12]], M.roof);
+  poly([[15.67, P, 24], [28.34, P, 24], [28.34, top, 12], [15.67, top, 12]], M.roof);
+  poly([[0, P, 0], [0, P, 24], [0, top, 12]], M.gable);
+  poly([[28.34, P, 0], [28.34, P, 24], [28.34, top, 12]], M.gable);
+  function gable(axis, a0, a1, b0, b1, oh0, oh1, ohB, t0, t1) {
+    var mid = (b0 + b1) / 2, tp = P + (b1 - b0) / 2 * PITCH, e = P - ohB * PITCH, A0 = a0 - oh0, A1 = a1 + oh1;
+    function pt(a, y, b) { return axis === 'x' ? [a, y, b] : [b, y, a]; }
+    poly([pt(A0, e, b0 - ohB), pt(A1, e, b0 - ohB), pt(A1, tp, mid), pt(A0, tp, mid)], M.roof);
+    poly([pt(A0, e, b1 + ohB), pt(A1, e, b1 + ohB), pt(A1, tp, mid), pt(A0, tp, mid)], M.roof);
+    if (t0) poly([pt(a0, P, b0), pt(a0, P, b1), pt(a0, tp, mid)], M.gable);
+    if (t1) poly([pt(a1, P, b0), pt(a1, P, b1), pt(a1, tp, mid)], M.gable);
+  }
+  gable('x', 28.34, 44.33, 0, 12, 0, 1.2, 1.5, false, true);
+  gable('z', 17, 24, 15.67, 28.34, 0, 0, 0, false, false);
+  gable('z', 24, 30, 15.67, 28.34, 0, 1.2, 1.2, false, true);
+  // gable vents
+  B(-0.06, 0.02, P + 3.6, P + 5.2, 10.9, 13.1, M.trim);
+  B(21.2, 22.8, P + 1.5, P + 2.6, 29.98, 30.06, M.trim);
+  B(44.31, 44.39, P + 1.3, P + 2.3, 5.3, 6.7, M.trim);
+  // porch roof, beam and post
+  poly([[9.2, ey, 25.5], [15.67, ey, 25.5], [15.67, ey - 0.75, 31], [9.2, ey - 0.75, 31]], M.roof);
+  B(9.7, 15.67, ey - 1.15, ey - 0.75, 30.3, 30.7, M.trim);
+  B(9.75, 10.15, F, ey - 1.15, 30.3, 30.7, M.trim);
+
+  // ---------- deck, porch, steps, rails ----------
+  function rail(x0, z0, x1, z1) {
+    var alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0), len = alongX ? x1 - x0 : z1 - z0;
+    function S(a, b, y0, y1, w, m) { if (alongX) B(x0 + a, x0 + b, y0, y1, z0 - w, z0 + w, m); else B(x0 - w, x0 + w, y0, y1, z0 + a, z0 + b, m); }
+    S(0, len, F + 3.35, F + 3.5, 0.13, M.trim); S(0, len, F + 0.25, F + 0.37, 0.08, M.trim);
+    S(0, 0.3, F, F + 3.6, 0.15, M.trim); S(len - 0.3, len, F, F + 3.6, 0.15, M.trim);
+    for (var a = 0.6; a < len - 0.4; a += 0.42) S(a, a + 0.08, F + 0.37, F + 3.35, 0.04, M.trim);
+    if (alongX) block(x0, x1, z0 - 0.1, z0 + 0.1); else block(x0 - 0.1, x0 + 0.1, z0, z1);
+  }
+  function steps(x0, x1, z0) {
+    for (var i = 0; i < 3; i++) B(x0, x1, 0, F - (i + 1) * F / 4, z0 + i * 0.9, z0 + (i + 1) * 0.9, M.deck);
+    block(x0 - 0.1, x0 + 0.1, z0, z0 + 2.7); block(x1 - 0.1, x1 + 0.1, z0, z0 + 2.7);
+    [x0, x1].forEach(function (x) { B(x - 0.12, x + 0.12, 0, F / 4 + 3, z0 + 2.45, z0 + 2.7, M.trim); cyl([x, F + 3.4, z0], [x, F / 4 + 3, z0 + 2.6], 0.08, M.trim); });
+  }
+  B(28.34, 44.33, F - 0.3, F - 0.02, 12, 18, M.deck); B(28.34, 31.84, F - 0.3, F - 0.02, 18, 21, M.deck);
+  [[28.6, 20.7], [31.6, 20.7], [36, 17.7], [44, 17.7], [44, 12.4]].forEach(function (p) { B(p[0] - 0.2, p[0] + 0.2, 0, F - 0.3, p[1] - 0.2, p[1] + 0.2, M.concrete); });
+  rail(44.33, 12, 44.33, 18); rail(40.5, 18, 44.33, 18); rail(28.34, 21, 31.84, 21); rail(31.84, 18.3, 31.84, 21);
+  block(31.84, 32.2, 17.9, 18.1);
+  steps(32.2, 40.5, 18);
+  B(9.67, 15.67, 0, F - 0.02, 24, 30, M.deck);
+  rail(9.67, 24, 9.67, 30);
+  steps(9.67, 15.67, 30);
+  // ground and front walk
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), M.grass);
+  ground.rotation.x = -Math.PI / 2; ground.position.set(22, -0.02, 15); scene.add(ground);
+  B(10.4, 14.9, -0.01, 0.03, 32.7, 62, M.path);
+
+  // ---------- shaker panels: doors and cabinet fronts ----------
+  function leaf(w, h, o) {
+    o = o || {};
+    var g = new THREE.Group(), t = o.t || 0.13, fw = o.fw || 0.4, m = o.mat || M.white, pm = o.glass ? M.glass : (o.pmat || M.panel);
+    function add(x0, x1, y0, y1, z0, z1, mm) { return B(x0, x1, y0, y1, z0, z1, mm, false, g); }
+    add(fw - 0.02, w - fw + 0.02, 0.02, h - 0.02, -t * 0.25, t * 0.25, pm);
+    add(0, fw, 0, h, -t / 2, t / 2, m); add(w - fw, w, 0, h, -t / 2, t / 2, m);
+    add(fw, w - fw, h - fw, h, -t / 2, t / 2, m); add(fw, w - fw, 0, o.bot || fw, -t / 2, t / 2, m);
+    if (o.mid) add(fw, w - fw, o.mid - fw / 2, o.mid + fw / 2, -t / 2, t / 2, m);
+    if (o.lever) [1, -1].forEach(function (s) {
+      var z = s * (t / 2 + 0.03);
+      var rose = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 16), M.black);
+      rose.rotation.x = Math.PI / 2; rose.position.set(w - 0.22, 3, z); g.add(rose);
+      add(w - 0.62, w - 0.2, 2.96, 3.04, z + s * 0.07 - 0.03, z + s * 0.07 + 0.03, M.black);
+      add(w - 0.25, w - 0.19, 2.96, 3.04, z, z + s * 0.1, M.black);
+    });
+    if (o.pull) {
+      var z0 = t / 2, z1 = t / 2 + 0.09;
+      if (o.pull === 'h') add(w / 2 - 0.25, w / 2 + 0.25, h / 2 - 0.02, h / 2 + 0.02, z0, z1, M.black);
+      else {
+        var px = o.pull === 'vr' ? w - 0.1 : 0.1, py = o.low ? 0.25 : h - 0.75;
+        add(px - 0.02, px + 0.02, py, py + 0.5, z0, z1, M.black);
+      }
+    }
+    return g;
+  }
+  function place(g, x, y, z, rot) { g.position.set(x, y, z); g.rotation.y = rot; scene.add(g); return g; }
+  // A cabinet front on the face of a box. face = which way it looks.
+  function front(face, c, a0, a1, y0, h, o) {
+    var g = leaf(a1 - a0 - 0.03, h - 0.03, Object.assign({ t: 0.09, fw: 0.2 }, o || {}));
+    if (face === '+x') place(g, c + 0.045, y0, a1 - 0.015, Math.PI / 2);
+    else if (face === '-x') place(g, c - 0.045, y0, a0 + 0.015, -Math.PI / 2);
+    else if (face === '-z') place(g, a1 - 0.015, y0, c - 0.045, Math.PI);
+    else place(g, a0 + 0.015, y0, c + 0.045, 0);
+  }
+  function doors(face, c, a0, a1, y0, h, n, low) {
+    var inc = face === '-x' || face === '+z', w = (a1 - a0) / n;
+    for (var i = 0; i < n; i++) {
+      var leftOfPair = i % 2 === 0, pull = (leftOfPair === inc) ? 'vr' : 'vl';
+      if (n === 1) pull = 'vr';
+      front(face, c, a0 + i * w, a0 + (i + 1) * w, y0, h, { pull: pull, low: low });
+    }
+  }
+  function baseFronts(face, c, a0, a1, n) {
+    var w = (a1 - a0) / n;
+    for (var i = 0; i < n; i++) front(face, c, a0 + i * w, a0 + (i + 1) * w, F + 2.33, 0.52, { pull: 'h', fw: 0.12 });
+    doors(face, c, a0, a1, F + 0.38, 1.93, n, false);
+  }
+
+  // interior doors, shown open
+  // front door: craftsman style in natural mahogany. Six lites over a dentil shelf, two tall panels below, black hardware.
+  // It is closed until you walk up to it, then swings in.
+  var fdoor = (function () {
+    var g = new THREE.Group(), w = 3, h = 6.62, t = 0.15, wood = L(0xb47a55, { roughness: 0.55 }), rec = L(0x9c6645, { roughness: 0.6 });
+    function add(x0, x1, y0, y1, z0, z1, m) { return B(x0, x1, y0, y1, z0, z1, m, false, g); }
+    add(0, 0.42, 0, h, -t / 2, t / 2, wood); add(w - 0.42, w, 0, h, -t / 2, t / 2, wood);            // stiles
+    add(0.42, w - 0.42, 6.2, h, -t / 2, t / 2, wood); add(0.42, w - 0.42, 0, 0.75, -t / 2, t / 2, wood); // top and bottom rails
+    add(0.42, w - 0.42, 3.75, 4.3, -t / 2, t / 2, wood);                                              // rail under the glass
+    add(1.32, 1.68, 0.75, 3.75, -t / 2, t / 2, wood);                                                 // between the two panels
+    add(0.42, 1.32, 0.75, 3.75, -t * 0.22, t * 0.22, rec); add(1.68, w - 0.42, 0.75, 3.75, -t * 0.22, t * 0.22, rec);
+    add(0.42, w - 0.42, 4.3, 6.2, -0.02, 0.02, M.glass);                                              // six lites
+    add(1.09, 1.19, 4.3, 6.2, -t * 0.4, t * 0.4, wood); add(1.81, 1.91, 4.3, 6.2, -t * 0.4, t * 0.4, wood);
+    add(0.42, w - 0.42, 5.2, 5.3, -t * 0.4, t * 0.4, wood);
+    add(0.3, w - 0.3, 4.22, 4.3, -t / 2 - 0.15, -t / 2, wood);                                        // shelf, outside face
+    [0.95, 1.5, 2.05].forEach(function (x) { add(x - 0.07, x + 0.07, 4.08, 4.22, -t / 2 - 0.1, -t / 2, wood); });
+    [1, -1].forEach(function (s) {                                                                    // lever and deadbolt, both faces
+      var z = s * (t / 2 + 0.03);
+      [3.0, 3.48].forEach(function (y) {
+        var rose = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.06, 18), M.black);
+        rose.rotation.x = Math.PI / 2; rose.position.set(w - 0.22, y, z); g.add(rose);
+      });
+      add(w - 0.64, w - 0.2, 2.96, 3.04, z + s * 0.07 - 0.03, z + s * 0.07 + 0.03, M.black);
+      add(w - 0.25, w - 0.19, 2.96, 3.04, z, z + s * 0.1, M.black);
+      add(w - 0.26, w - 0.18, 3.42, 3.54, z, z + s * 0.07, M.black);
+    });
+    return place(g, 15.17, F, 23.72, Math.PI);
+  })(), fOpen = 0;
+  place(leaf(3, 6.62, { mid: 3.3, lever: true }), 15.38, F, 10.13, Math.PI / 2);
+  place(leaf(3, 6.62, { mid: 3.3, lever: true }), 28.36, F, 11.3, 0);
+  place(leaf(3, 6.62, { mid: 3.3 }), 17.55, F, 8.14, 0);
+  place(leaf(2.3, 6.62, { mid: 3.3, lever: true }), 19.21, F, 7.9, Math.PI / 2);
+  // dining to deck: left-hand inswing (hinged on the kitchen side as seen from the deck), shown open
+  place(leaf(3, 6.62, { glass: true, fw: 0.35, lever: true }), 27.9, F, 20.64, Math.PI);
+  // closet sliding doors
+  [[13.09, M.pBed2], [30.99, M.pPrimary]].forEach(function (c) {
+    B(c[0] - 0.09, c[0] + 0.09, F + 6.67, P, 0.45, 5.85, c[1]);
+    place(leaf(2.75, 6.62, { mid: 3.3 }), c[0] - 0.05, F, 0.5, -Math.PI / 2);
+    place(leaf(2.75, 6.62, { mid: 3.3 }), c[0] + 0.05, F, 3.1, -Math.PI / 2);
+    block(c[0] - 0.1, c[0] + 0.1, 0.45, 5.85);
+  });
+  // primary bedroom to deck: 6 ft outswing French pair, both leaves shown open onto the deck
+  place(leaf(3, 7.95, { glass: true, fw: 0.35, lever: true }), 32.52, F, 12.04, -Math.PI / 2);
+  place(leaf(3, 7.95, { glass: true, fw: 0.35, lever: true }), 38.48, F, 12.04, -Math.PI / 2);
+
+  // ---------- kitchen: white shaker, black pulls ----------
+  function cabinet(x0, x1, z0, z1, y0, y1) { B(x0, x1, y0, y1, z0, z1, M.white); }
+  function baseRun(x0, x1, z0, z1, tx0, tx1, tz0, tz1) {
+    cabinet(x0, x1, z0, z1, F + 0.33, F + 2.88);
+    B(x0 + 0.2, x1 - 0.2, F, F + 0.33, z0 + 0.2, z1 - 0.2, M.dark);
+    B(tx0, tx1, F + 2.88, F + 3.0, tz0, tz1, M.counter);
+    block(x0, x1, z0, z1);
+  }
+  baseRun(16.09, 18.19, 25.56, 29.55, 16.09, 18.27, 25.56, 29.55);
+  baseRun(18.19, 25.92, 27.61, 29.55, 18.19, 25.92, 27.53, 29.55);
+  baseRun(25.92, 27.92, 21.01, 22.86, 25.84, 27.92, 21.01, 22.86);
+  baseRun(25.92, 27.92, 25.37, 29.55, 25.84, 27.92, 25.37, 29.55);
+  baseFronts('+x', 18.19, 25.56, 27.61, 2);
+  baseFronts('-z', 27.61, 20.64, 23.39, 2);
+  baseFronts('-z', 27.61, 23.39, 25.92, 2);
+  baseFronts('-x', 25.92, 21.01, 22.86, 2);
+  baseFronts('-x', 25.92, 25.37, 27.61, 2);
+  // dishwasher
+  B(18.36, 20.45, F + 0.38, F + 2.85, 27.55, 27.61, M.steel); B(18.6, 20.2, F + 2.45, F + 2.5, 27.47, 27.52, M.black);
+  // sink and faucet
+  B(20.95, 23.1, F + 2.95, F + 3.01, 28.0, 29.2, M.dark);
+  cyl([22.02, F + 3.0, 29.3], [22.02, F + 3.9, 29.3], 0.05, M.black); cyl([22.02, F + 3.9, 29.3], [22.02, F + 3.75, 28.7], 0.04, M.black);
+  // refrigerator
+  B(16.14, 18.39, F, F + 5.9, 21.25, 23.85, M.steel, true);
+  B(18.39, 18.41, F + 0.2, F + 5.8, 22.54, 22.56, M.dark); B(18.41, 18.5, F + 2.4, F + 4.6, 22.36, 22.4, M.black); B(18.41, 18.5, F + 2.4, F + 4.6, 22.7, 22.74, M.black);
+  // pantry
+  cabinet(16.09, 18.19, 23.96, 25.56, F, F + 7.5); block(16.09, 18.19, 23.96, 25.56);
+  doors('+x', 18.19, 23.96, 25.56, F + 0.1, 3.6, 1, false); doors('+x', 18.19, 23.96, 25.56, F + 3.75, 3.7, 1, true);
+  // induction cooktop set in the counter, built-in oven in the cabinet below, hood above
+  baseRun(25.92, 27.92, 22.86, 25.37, 25.84, 27.92, 22.86, 25.37);
+  var gloss = L(0x101214, { roughness: 0.12 });
+  B(26.12, 27.62, F + 3.0, F + 3.012, 22.96, 25.27, gloss);
+  [[26.5, 23.5, 0.3], [27.25, 23.5, 0.24], [26.5, 24.7, 0.24], [27.25, 24.7, 0.3]].forEach(function (z) {
+    var ring = new THREE.Mesh(new THREE.RingGeometry(z[2] - 0.015, z[2], 32), new THREE.MeshBasicMaterial({ color: 0x6d7378, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(z[0], F + 3.016, z[1]); ring.userData.noShadow = true; scene.add(ring);
+  });
+  B(26.14, 26.2, F + 3.012, F + 3.016, 23.8, 24.4, M.dark);
+  B(25.86, 25.92, F + 0.42, F + 2.84, 22.92, 25.31, M.steel);
+  B(25.845, 25.86, F + 0.7, F + 2.05, 23.2, 25.03, gloss);
+  B(25.845, 25.86, F + 2.5, F + 2.76, 23.0, 25.23, gloss);
+  B(25.74, 25.78, F + 2.3, F + 2.35, 23.15, 25.08, M.steel);
+  B(25.78, 25.86, F + 2.3, F + 2.35, 23.2, 23.26, M.steel); B(25.78, 25.86, F + 2.3, F + 2.35, 24.97, 25.03, M.steel);
+  B(26.5, 27.92, F + 5.6, F + 6.2, 22.86, 25.37, M.steel); B(27.1, 27.92, F + 6.2, P, 23.6, 24.6, M.steel);
+  // upper cabinets
+  cabinet(16.09, 17.17, 25.56, 29.55, F + 4.5, F + 7.5); doors('+x', 17.17, 25.56, 28.46, F + 4.5, 3.0, 3, true);
+  cabinet(26.84, 27.92, 21.01, 22.86, F + 4.5, F + 7.5); doors('-x', 26.84, 21.01, 22.86, F + 4.5, 3.0, 2, true);
+  cabinet(26.84, 27.92, 25.37, 29.55, F + 4.5, F + 7.5); doors('-x', 26.84, 25.37, 28.46, F + 4.5, 3.0, 3, true);
+
+  // ---------- bathroom ----------
+  // washer, dryer, counter, shelves
+  [[0.6, 2.8], [2.9, 5.1]].forEach(function (z) {
+    B(16.19, 18.79, F, F + 3.25, z[0], z[1], M.white);
+    var d = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.08, 28), M.dark);
+    d.rotation.z = Math.PI / 2; d.position.set(18.8, F + 1.7, (z[0] + z[1]) / 2); scene.add(d);
+    var r = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.1, 28), M.glass);
+    r.rotation.z = Math.PI / 2; r.position.set(18.82, F + 1.7, (z[0] + z[1]) / 2); scene.add(r);
+  });
+  block(16.09, 18.9, 0.45, 5.2);
+  B(16.09, 18.95, F + 3.3, F + 3.42, 0.45, 5.2, M.counter);
+  B(16.09, 17.3, F + 4.7, F + 4.78, 0.45, 5.2, M.white); B(16.09, 17.3, F + 5.9, F + 5.98, 0.45, 5.2, M.white);
+  B(16.2, 17.2, F + 4.78, F + 5.2, 0.8, 1.9, M.linen); B(16.2, 17.2, F + 4.78, F + 5.1, 2.2, 3.3, M.blue); B(16.2, 17.2, F + 5.98, F + 6.4, 1.2, 2.4, M.linen);
+  // tile floor over the whole bathroom
+  B(16.09, 27.92, F, F + 0.012, 0.45, 7.95, M.tileFloor);
+  // vanity: same shaker cabinet and countertop as the kitchen, white bowl, mirror
+  baseRun(21.29, 24.09, 0.49, 2.2, 21.25, 24.13, 0.45, 2.28);
+  baseFronts('+z', 2.2, 21.29, 24.09, 2);
+  B(22.0, 23.4, F + 3.0, F + 3.012, 0.85, 1.85, M.white); B(22.1, 23.3, F + 3.012, F + 3.016, 0.95, 1.75, M.basin);
+  cyl([22.7, F + 3.0, 0.68], [22.7, F + 3.55, 0.68], 0.04, M.black); cyl([22.7, F + 3.55, 0.68], [22.7, F + 3.45, 1.15], 0.035, M.black);
+  B(21.6, 23.8, F + 3.5, F + 6.5, 0.45, 0.5, M.mirror); B(21.5, 23.9, F + 3.4, F + 6.6, 0.45, 0.48, M.black);
+  // shower: tile, glass panel, seat, grab bar, shower head
+  B(24.17, 27.92, F, F + 7.5, 0.45, 0.49, M.tile); B(27.88, 27.92, F, F + 7.5, 0.45, 4.95, M.tile);
+  B(24.15, 24.19, F, F + 6.5, 0.45, 2.95, M.glass); block(24.1, 24.24, 0.45, 2.95);
+  B(25.04, 27.04, F + 1.4, F + 1.52, 0.49, 1.75, M.teak, true);
+  cyl([27.74, F + 2.9, 2.05], [27.74, F + 2.9, 4.45], 0.06, M.steel);
+  cyl([27.8, F + 3.3, 1.3], [27.8, F + 6.6, 1.3], 0.03, M.black); B(27.5, 27.82, F + 6.5, F + 6.6, 1.2, 1.4, M.black);
+  var head = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 20), M.black); head.position.set(27.4, F + 6.48, 1.3); scene.add(head);
+  B(24.3, 27.8, F, F + 0.02, 4.75, 4.9, M.dark);
+  // toilet, grab bars
+  B(27.2, 27.82, F + 1.3, F + 2.7, 5.65, 7.25, M.white);
+  var bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.42, 1.45, 24), M.white); bowl.scale.set(1.25, 1, 1); bowl.position.set(26.5, F + 0.725, 6.45); scene.add(bowl);
+  var lid = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.64, 0.08, 24), M.white); lid.scale.set(1.25, 1, 1); lid.position.set(26.5, F + 1.49, 6.45); scene.add(lid);
+  block(25.7, 27.92, 5.65, 7.25);
+  cyl([23.7, F + 2.9, 7.8], [26.9, F + 2.9, 7.8], 0.06, M.steel);
+  cyl([27.85, F + 2.6, 5.0], [25.6, F + 2.6, 5.0], 0.05, M.steel); cyl([27.85, F + 2.0, 5.0], [25.6, F + 2.0, 5.0], 0.04, M.steel); cyl([25.6, F + 2.0, 5.0], [25.6, F + 2.6, 5.0], 0.04, M.steel);
+  // water heater seen through nothing: closet is closed, but give it a body in case the door is studied
+  var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 5.2, 20), M.steel); wh.position.set(17.5, F + 2.6, 6.75); scene.add(wh);
+
+  // ---------- furniture, to show fit ----------
+  function bed(x0, x1, z0, z1, cover) {
+    B(x0, x1, F, F + 0.9, z0, z1, M.oak, true); B(x0, x1, F, F + 3.4, z0 - 0.12, z0 + 0.12, M.oak);
+    B(x0 + 0.1, x1 - 0.1, F + 0.9, F + 1.9, z0 + 0.15, z1 - 0.1, M.linen);
+    B(x0 + 0.05, x1 - 0.05, F + 1.5, F + 1.98, z0 + 2.1, z1 - 0.05, cover);
+    var w = (x1 - x0) / 2;
+    B(x0 + 0.3, x0 + w - 0.15, F + 1.9, F + 2.25, z0 + 0.4, z0 + 1.8, M.white); B(x0 + w + 0.15, x1 - 0.3, F + 1.9, F + 2.25, z0 + 0.4, z0 + 1.8, M.white);
+  }
+  bed(34.7, 39.7, 0.75, 7.3, M.blue);
+  B(32.9, 34.4, F, F + 1.9, 0.6, 2.0, M.oak, true); B(40.0, 41.5, F, F + 1.9, 0.6, 2.0, M.oak, true);
+  bed(0.7, 5.1, 0.75, 7.0, M.rust);
+  // sofa and coffee table
+  B(3.6, 10.6, F, F + 1.35, 10.7, 13.7, M.oat, true); B(3.6, 10.6, F + 1.35, F + 2.8, 10.7, 11.5, M.oat);
+  B(3.6, 4.3, F + 1.35, F + 2.1, 11.5, 13.7, M.oat); B(9.9, 10.6, F + 1.35, F + 2.1, 11.5, 13.7, M.oat);
+  B(5.3, 8.9, F + 1.15, F + 1.3, 15.3, 17.1, M.oak, true); B(5.5, 8.7, F, F + 1.15, 15.5, 16.9, M.dark);
+  // entry bench and coat cabinet
+  B(8.9, 10.4, F, F + 1.5, 22.05, 23.55, M.oak, true);
+  B(10.4, 11.9, F, F + 6.6, 22.05, 23.55, M.white, true); doors('-z', 22.05, 10.4, 11.9, F + 0.1, 6.4, 2, false);
+  // dining table and chairs
+  B(20.19, 25.19, F + 2.35, F + 2.5, 15.65, 18.65, M.oak);
+  [[20.4, 15.85], [24.8, 15.85], [20.4, 18.3], [24.8, 18.3]].forEach(function (p) { B(p[0], p[0] + 0.2, F, F + 2.35, p[1], p[1] + 0.2, M.oak); });
+  block(20.19, 25.19, 15.65, 18.65);
+  [[21.0, 14.4, 1], [23.1, 14.4, 1], [21.0, 18.75, -1], [23.1, 18.75, -1]].forEach(function (c) {
+    B(c[0], c[0] + 1.3, F + 1.4, F + 1.5, c[1], c[1] + 1.3, M.oak);
+    var zb = c[2] > 0 ? c[1] : c[1] + 1.2;
+    B(c[0], c[0] + 1.3, F + 1.5, F + 2.9, zb, zb + 0.1, M.oak);
+    [[0, 0], [1.2, 0], [0, 1.2], [1.2, 1.2]].forEach(function (l) { B(c[0] + l[0], c[0] + l[0] + 0.1, F, F + 1.4, c[1] + l[1], c[1] + l[1] + 0.1, M.oak); });
+  });
+
+  // ---------- ceiling lights and shadows ----------
+  [[7.5, 17], [22, 16.5], [22, 25], [22, 10.6], [21.5, 4.4], [36.5, 6], [7.5, 5.2]].forEach(function (p) {
+    var pl = new THREE.PointLight(0xffe3bf, 0.4, 26, 2);
+    pl.position.set(p[0], P - 0.6, p[1]); scene.add(pl);
+    var fx = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.12, 20), new THREE.MeshBasicMaterial({ color: 0xfff6e4 }));
+    fx.position.set(p[0], P - 0.11, p[1]); fx.userData.noShadow = true; scene.add(fx);
+  });
+  scene.traverse(function (o) {
+    if (!o.isMesh || o === sky) return;
+    var see = o.material === M.glass || o.userData.noShadow;
+    o.castShadow = !see && o !== ground;
+    o.receiveShadow = !see;
+  });
+
+  // ---------- walking ----------
+  var rooms = [
+    [16.09, 27.92, 0.45, 7.95, 'Bathroom'], [16.09, 27.92, 7.95, 13.3, 'Hall'], [16.09, 27.92, 13.3, 21, 'Dining area'],
+    [16.09, 27.92, 21, 29.55, 'Kitchen'], [0.45, 15.67, 0.45, 10.15, 'Bedroom 2'], [0.45, 16.09, 10.15, 23.55, 'Living room'],
+    [27.92, 43.88, 0.45, 11.55, 'Primary bedroom'], [28.34, 44.33, 12, 21, 'Deck'], [9.67, 15.67, 24, 30, 'Porch']
+  ];
+  var jumps = {
+    yard: [12.7, 50, 0.12], porch: [13.4, 33.4, 0], living: [11.5, 19.5, 0.5], kitchen: [22, 21.5, Math.PI], dining: [18.2, 12.8, Math.PI + 0.5],
+    bath: [21.8, 6.6, 0.25], primary: [30.5, 9.8, -1.15], bed2: [13.6, 8.6, 0.9], deck: [42, 16.5, 1.2], rear: [22, -34, Math.PI]
+  };
+  var pos = { x: 12.7, z: 50, y: 5.3 }, yaw = 0.12, pitch = 0, walking = false, back = false, R = 0.75, EYE = 5.3;
+  function onHouse(x, z) { return (x >= 0 && x <= 15.67 && z >= 0 && z <= 24) || (x > 15.67 && x <= 28.34 && z >= 0 && z <= 30) || (x > 28.34 && x <= 44.33 && z >= 0 && z <= 12); }
+  function ramp(z, z0) { return Math.max(0, F * (1 - (z - z0) / 3.6)) * (z - z0 <= 2.9 ? 1 : 0); }
+  function heightAt(x, z) {
+    if (onHouse(x, z)) return F;
+    if (x >= 9.67 && x <= 15.67 && z >= 24 && z <= 30) return F;
+    if ((x >= 28.34 && x <= 44.33 && z >= 12 && z <= 18) || (x >= 28.34 && x <= 31.84 && z >= 18 && z <= 21)) return F;
+    if (x >= 9.67 && x <= 15.67 && z > 30 && z < 33) return ramp(z, 30);
+    if (x >= 32.2 && x <= 40.5 && z > 18 && z < 21) return ramp(z, 18);
+    return 0;
+  }
+  function blocked(x, z) {
+    if (x < -90 || x > 130 || z < -100 || z > 120) return true;
+    if (fOpen < 0.8 && x > 12.15 - R && x < 15.19 + R && z > 23.55 - R && z < 24 + R) return true;
+    for (var i = 0; i < colliders.length; i++) { var c = colliders[i]; if (x > c[0] - R && x < c[1] + R && z > c[2] - R && z < c[3] + R) return true; }
+    return false;
+  }
+  function jump(k) { var j = jumps[k]; if (!j) return; pos.x = j[0]; pos.z = j[1]; yaw = j[2]; pitch = 0; pos.y = heightAt(pos.x, pos.z) + EYE; }
+  Array.prototype.forEach.call(document.querySelectorAll('#jumps button'), function (b) { b.addEventListener('click', function () { jump(b.getAttribute('data-j')); canvas.focus(); }); });
+
+  var locked = false, lastX = null, lastY = null, edge = 0, inside = false;
+  function look(dx, dy) { yaw -= dx * 0.0026; pitch = Math.max(-1.2, Math.min(1.2, pitch - dy * 0.0026)); }
+  document.addEventListener('pointerlockchange', function () { locked = document.pointerLockElement === canvas; });
+  canvas.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    walking = true;
+    if (!locked && canvas.requestPointerLock) { try { var p = canvas.requestPointerLock(); if (p && p.catch) p.catch(function () {}); } catch (err) {} }
+    e.preventDefault();
+  });
+  window.addEventListener('mouseup', function (e) { if (e.button === 0) walking = false; });
+  window.addEventListener('blur', function () { walking = false; back = false; });
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  canvas.addEventListener('mouseenter', function () { inside = true; lastX = null; });
+  canvas.addEventListener('mouseleave', function () { inside = false; edge = 0; lastX = null; });
+  document.addEventListener('mousemove', function (e) {
+    if (locked) { look(e.movementX || 0, e.movementY || 0); return; }
+    if (e.target !== canvas) return;
+    if (lastX !== null) look(e.clientX - lastX, e.clientY - lastY);
+    lastX = e.clientX; lastY = e.clientY;
+    var nx = (e.clientX / canvas.clientWidth) * 2 - 1;
+    edge = Math.abs(nx) > 0.85 ? (nx > 0 ? 1 : -1) * (Math.abs(nx) - 0.85) / 0.15 : 0;
+  });
+  // touch: press to walk, drag to look
+  var tId = null, tx = 0, ty = 0;
+  canvas.addEventListener('touchstart', function (e) { var t = e.changedTouches[0]; tId = t.identifier; tx = t.clientX; ty = t.clientY; walking = true; e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchmove', function (e) {
+    for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; if (t.identifier === tId) { look((t.clientX - tx) * 2, (t.clientY - ty) * 2); tx = t.clientX; ty = t.clientY; } }
+    e.preventDefault();
+  }, { passive: false });
+  function tEnd() { walking = false; tId = null; }
+  canvas.addEventListener('touchend', tEnd); canvas.addEventListener('touchcancel', tEnd);
+  window.addEventListener('keydown', function (e) { if (e.key === 'w' || e.key === 'ArrowUp') walking = true; if (e.key === 's' || e.key === 'ArrowDown') back = true; });
+  window.addEventListener('keyup', function (e) { if (e.key === 'w' || e.key === 'ArrowUp') walking = false; if (e.key === 's' || e.key === 'ArrowDown') back = false; });
+
+  function resize() {
+    var w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize); resize();
+
+  var roomEl = document.getElementById('room'), helpEl = document.getElementById('help'), walked = 0, lastRoom = '', prev = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+    if (!locked && inside && edge) yaw -= edge * 1.4 * dt;
+    var near = Math.sqrt((pos.x - 13.67) * (pos.x - 13.67) + (pos.z - 23.8) * (pos.z - 23.8)) < 7.5 ? 1 : 0;
+    fOpen += (near - fOpen) * Math.min(1, dt * 5);
+    fdoor.rotation.y = Math.PI - fOpen * Math.PI / 2;
+    var dir = (walking ? 1 : 0) - (back ? 1 : 0);
+    if (dir) {
+      walked += dt;
+      if (walked > 3 && !helpEl.hidden) helpEl.hidden = true;
+      var sp = 6.5 * dt * dir, dx = -Math.sin(yaw) * sp, dz = -Math.cos(yaw) * sp;
+      if (!blocked(pos.x + dx, pos.z + dz)) { pos.x += dx; pos.z += dz; }
+      else if (!blocked(pos.x + dx, pos.z)) pos.x += dx;
+      else if (!blocked(pos.x, pos.z + dz)) pos.z += dz;
+    }
+    var ty2 = heightAt(pos.x, pos.z) + EYE;
+    pos.y += (ty2 - pos.y) * Math.min(1, dt * 10);
+    camera.position.set(pos.x, pos.y, pos.z);
+    camera.rotation.y = yaw; camera.rotation.x = pitch;
+    var name = heightAt(pos.x, pos.z) > 0 && !onHouse(pos.x, pos.z) ? 'Steps' : (pos.z > 30 ? 'Front yard' : (pos.z < 0 ? 'Rear yard' : 'Side yard'));
+    for (var i = 0; i < rooms.length; i++) { var r = rooms[i]; if (pos.x >= r[0] && pos.x <= r[1] && pos.z >= r[2] && pos.z <= r[3]) { name = r[4]; break; } }
+    if (name !== lastRoom) { roomEl.textContent = name; lastRoom = name; }
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  pos.y = heightAt(pos.x, pos.z) + EYE;
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
